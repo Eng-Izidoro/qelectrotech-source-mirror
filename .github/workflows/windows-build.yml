@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '0 2 1 * *' #
   workflow_dispatch:       # Manual trigger available at any time
+  push:                    # Izidoro fork: build every change on our branch
+    branches: [izidoro]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
