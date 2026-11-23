@@ -1233,6 +1233,16 @@ void BorderTitleBlock::updateDiagramContextForTitleBlock(
 	context.addValue("folio",       btb_final_folio_);
 	context.addValue("folio-id",    folio_index_);
 	context.addValue("folio-total", folio_total_);
+		//Same numbers with leading zeros ("05" of "10"), as wide as the
+		//total and never narrower than two digits
+	const int folio_digits =
+		qMax(2, static_cast<int>(QString::number(folio_total_).size()));
+	context.addValue("folio-id-padded",
+			 QStringLiteral("%1").arg(folio_index_, folio_digits,
+						  10, QChar('0')));
+	context.addValue("folio-total-padded",
+			 QStringLiteral("%1").arg(folio_total_, folio_digits,
+						  10, QChar('0')));
 	context.addValue("auto_page_num", tb.auto_page_num);
 	context.addValue("previous-folio-num", m_previous_folio_num);
 	context.addValue("next-folio-num", m_next_folio_num);

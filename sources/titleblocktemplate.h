@@ -193,9 +193,14 @@ class TitleBlockTemplate : public QObject {
 	void applyRowColNums();
 	void rowColsChanged();
 	QStringList listOfVariables() const;
+	bool hasSvgLayout() const;
+	QString svgLayout() const;
+	void setSvgLayout(const QString &);
 	
 	protected:
 	void loadInformation(const QDomElement &);
+	void loadSvgLayout(const QDomElement &);
+	void saveSvgLayout(QDomElement &) const;
 	bool loadLogos(const QDomElement &, bool = false);
 	bool loadLogo(const QDomElement &);
 	bool loadGrid(const QDomElement &);
@@ -237,6 +242,7 @@ class TitleBlockTemplate : public QObject {
 	QString interpreteVariables(
 			const QString &,
 			const DiagramContext &) const;
+	QByteArray svgLayoutForContext(const DiagramContext &) const;
 	void renderTextCell(
 			QPainter &,
 			const QString &,
@@ -305,5 +311,11 @@ class TitleBlockTemplate : public QObject {
 		@brief out side or in side position title template
 	*/
 	Qt::Alignment m_align_ = Qt::AlignTop; /// position relative to the frame boundary
+	/**
+		@brief m_svg_layout : optional SVG drawing of the whole title
+		block, with "%{variable}" placeholders. When set, it is drawn
+		instead of the cells grid; the grid still gives the height.
+	*/
+	QString m_svg_layout;
 };
 #endif

@@ -140,6 +140,7 @@ bool TitleBlockTemplate::loadFromXmlElement(const QDomElement &xml_element) {
 	loadInformation(xml_element);
 	loadLogos(xml_element, true);
 	loadGrid(xml_element);
+	loadSvgLayout(xml_element);
 
 	return(true);
 }
@@ -181,6 +182,7 @@ bool TitleBlockTemplate::saveToXmlElement(QDomElement &xml_element) const
 	saveInformation(xml_element);
 	saveLogos(xml_element);
 	saveGrid(xml_element);
+	saveSvgLayout(xml_element);
 	return(true);
 }
 
@@ -235,6 +237,7 @@ TitleBlockTemplate *TitleBlockTemplate::clone() const
 	copy -> rows_heights_  = rows_heights_;
 	copy -> columns_width_ = columns_width_;
 	copy -> m_align_       = m_align_;
+	copy -> m_svg_layout   = m_svg_layout;
 
 	// copy cells basically
 	copy -> cells_ = cells_;
@@ -1651,6 +1654,17 @@ void TitleBlockTemplate::render(QPainter &painter,
 				const DiagramContext &diagram_context,
 				int titleblock_width) const
 {
+	if (hasSvgLayout())
+	{
+		QSvgRenderer svg_renderer(svgLayoutForContext(diagram_context));
+		if (svg_renderer.isValid())
+		{
+			svg_renderer.render(&painter,
+					    QRectF(0, 0, titleblock_width, height()));
+			return;
+		}
+	}
+
 	QList<int> widths = columnsWidth(titleblock_width);
 	int titleblock_height = height();
 
@@ -1738,6 +1752,10 @@ void TitleBlockTemplate::renderDxf(QRectF &title_block_rect,
 								  recHeight))),
 				color,
 				true);
+
+	// The SVG drawing of a title block has no DXF equivalent: only its
+	// border is exported.
+	if (hasSvgLayout()) return;
 
 	// run through each individual cell
 	for (int j = 0 ; j < rows_heights_.count() ; ++ j) {
@@ -1972,7 +1990,104 @@ QStringList TitleBlockTemplate::listOfVariables() const
 			}
 		}
 	}
+	// Only the braced form is looked for in an SVG drawing, where a bare
+	// '%' can be part of the drawing itself (e.g. "width=\"100%\"").
+	static const QRegularExpression svg_rx(
+		QStringLiteral("%\\{([A-Za-z0-9_-]+)\\}"));
+	auto svg_it = svg_rx.globalMatch(m_svg_layout);
+	while (svg_it.hasNext()) {
+		const QString name = svg_it.next().captured(1);
+		if (!list.contains(name)) list << name;
+	}
 	return list;
+}
+
+/**
+	@brief TitleBlockTemplate::hasSvgLayout
+	@return true if this template is drawn from an SVG drawing rather than
+	from its cells grid
+*/
+bool TitleBlockTemplate::hasSvgLayout() const
+{
+	return(!m_svg_layout.trimmed().isEmpty());
+}
+
+/**
+	@brief TitleBlockTemplate::svgLayout
+	@return the SVG drawing of this template, with its "%{variable}"
+	placeholders, or an empty string if it has none
+*/
+QString TitleBlockTemplate::svgLayout() const
+{
+	return(m_svg_layout);
+}
+
+/**
+	@brief TitleBlockTemplate::setSvgLayout
+	@param svg : SVG drawing of the whole title block, with "%{variable}"
+	placeholders; an empty string goes back to drawing the cells grid
+*/
+void TitleBlockTemplate::setSvgLayout(const QString &svg)
+{
+	m_svg_layout = svg;
+}
+
+/**
+	@brief TitleBlockTemplate::loadSvgLayout
+	Read the optional <svglayout> child of a title block template.
+	@param xml_element : the <titleblocktemplate> element
+*/
+void TitleBlockTemplate::loadSvgLayout(const QDomElement &xml_element)
+{
+	m_svg_layout.clear();
+	const QDomElement svg_element =
+			xml_element.firstChildElement(QStringLiteral("svglayout"));
+	if (!svg_element.isNull())
+		m_svg_layout = svg_element.text().trimmed();
+}
+
+/**
+	@brief TitleBlockTemplate::saveSvgLayout
+	Write the SVG drawing, if any, as a <svglayout> child.
+	@param xml_element : the <titleblocktemplate> element
+*/
+void TitleBlockTemplate::saveSvgLayout(QDomElement &xml_element) const
+{
+	if (!hasSvgLayout()) return;
+	QDomDocument doc = xml_element.ownerDocument();
+	QDomElement svg_element = doc.createElement(QStringLiteral("svglayout"));
+	svg_element.appendChild(doc.createCDATASection(m_svg_layout));
+	xml_element.appendChild(svg_element);
+}
+
+/**
+	@brief TitleBlockTemplate::svgLayoutForContext
+	Replace each "%{variable}" placeholder of the SVG drawing with its value
+	from \a diagram_context, escaped for XML. A variable with no value
+	gives an empty text.
+	@param diagram_context : values of the variables
+	@return the SVG drawing ready to be rendered
+*/
+QByteArray TitleBlockTemplate::svgLayoutForContext(
+		const DiagramContext &diagram_context) const
+{
+	static const QRegularExpression rx(
+		QStringLiteral("%\\{([A-Za-z0-9_-]+)\\}"));
+	QString result;
+	result.reserve(m_svg_layout.size());
+	qsizetype last = 0;
+	auto it = rx.globalMatch(m_svg_layout);
+	while (it.hasNext()) {
+		const QRegularExpressionMatch m = it.next();
+		result += QStringView(m_svg_layout).mid(
+				last, m.capturedStart() - last);
+		const QString name = m.captured(1);
+		if (diagram_context.contains(name))
+			result += diagram_context[name].toString().toHtmlEscaped();
+		last = m.capturedEnd();
+	}
+	result += QStringView(m_svg_layout).mid(last);
+	return(result.toUtf8());
 }
 
 /**
