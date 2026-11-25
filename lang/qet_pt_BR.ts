@@ -17773,6 +17773,16 @@ Opções disponíveis:
         <translation>Propriedades do projeto</translation>
     </message>
     <message>
+        <location filename="../sources/qetdiagrameditor.cpp"/>
+        <source>Project data...</source>
+        <translation type="unfinished">Dados do Projeto...</translation>
+    </message>
+    <message>
+        <location filename="../sources/qetdiagrameditor.cpp"/>
+        <source>Type the data of the title block of every folio once</source>
+        <translation type="unfinished">Digite uma vez os dados da legenda de todas as páginas</translation>
+    </message>
+    <message>
         <location filename="../sources/qetdiagrameditor.cpp" line="1321"/>
         <source>Add a sheet</source>
         <translation>Acrescentar uma página</translation>
@@ -33589,6 +33599,104 @@ associar o nome &quot;variável_personalizada&quot; e o valor &quot;1745&quot; v
         <location filename="../sources/SearchAndReplace/ui/replaceadvanceddialog.ui" line="92"/>
         <source>What:</source>
         <translation>O que:</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectDataDialog</name>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Client</source>
+        <translation type="unfinished">Cliente</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Order number</source>
+        <translation type="unfinished">Nº OS</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Drawn by</source>
+        <translation type="unfinished">Desenho</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Approved by</source>
+        <translation type="unfinished">Aprovação</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Date</source>
+        <translation type="unfinished">Data</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Revision</source>
+        <translation type="unfinished">Revisão</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Mains voltage</source>
+        <translation type="unfinished">Tensão da rede</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Frequency (Hz)</source>
+        <translation type="unfinished">Frequência (Hz)</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Paper</source>
+        <translation type="unfinished">Papel</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Project data</source>
+        <translation type="unfinished">Dados do Projeto</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Type these once: they fill the title block of every folio of the project.</source>
+        <translation type="unfinished">Digite estes dados uma vez: eles preenchem a legenda de todas as páginas do projeto.</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Project</source>
+        <translation type="unfinished">Projeto</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Project name</source>
+        <translation type="unfinished">Nome do projeto</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Title block</source>
+        <translation type="unfinished">Legenda</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Template</source>
+        <translation type="unfinished">Modelo</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Use this title block on every folio of the project</source>
+        <translation type="unfinished">Usar esta legenda em todas as páginas do projeto</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>%1 (%2)</source>
+        <translation type="unfinished">%1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>No preview for this title block.</source>
+        <translation type="unfinished">Sem prévia para esta legenda.</translation>
+    </message>
+    <message>
+        <location filename="../sources/ui/projectdatadialog.cpp"/>
+        <source>Use the title block %1 on every folio</source>
+        <translation type="unfinished">Usar a legenda %1 em todas as páginas</translation>
     </message>
 </context>
 </TS>
