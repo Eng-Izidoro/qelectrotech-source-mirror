@@ -83,6 +83,7 @@
 #include "ui/textdestinationdialog.h"
 #include "qetgraphicsitem/independenttextitem.h"
 #include "QPropertyUndoCommand/qpropertyundocommand.h"
+#include "ui/projectdatadialog.h"
 #include "ui/projectpropertiesdialog.h"
 #include "projectview.h"
 #include "qetproject.h"
@@ -1249,6 +1250,17 @@ void QETDiagramEditor::setUpActions()
 	});
 
 		//Edit current project properties
+		// One form for the title block data of every folio
+	m_project_data = new QAction(QET::Icons::ProjectProperties, tr("Project data..."), this);
+	m_project_data->setStatusTip(tr("Type the data of the title block of every folio once"));
+	ShortcutManager::instance().registerAction(m_project_data, "diagrameditor.project_data", tr("Diagram editors"), QKeySequence());
+	connect(m_project_data, &QAction::triggered, this, [this]() {
+		if (ProjectView *pv = currentProjectView()) {
+			ProjectDataDialog dialog(pv->project(), this);
+			dialog.exec();
+		}
+	});
+
 	m_project_edit_properties = new QAction(QET::Icons::ProjectProperties, tr("Project properties"), this);
 	ShortcutManager::instance().registerAction(m_project_edit_properties, "diagrameditor.project_edit_properties", tr("Diagram editors"), QKeySequence());
 	connect(m_project_edit_properties, &QAction::triggered, [this]() {
@@ -2442,6 +2454,7 @@ void QETDiagramEditor::setUpMenu()
 	menu_edition -> addAction(m_repeat_last_command);
 
 	// menu Projet
+	menu_project -> addAction(m_project_data);
 	menu_project -> addAction(m_project_edit_properties);
 	menu_project -> addAction(m_project_history);
 	menu_project -> addAction(m_auto_conductor);
@@ -4103,6 +4116,7 @@ void QETDiagramEditor::slot_updateActions()
 
 		//Project menu
 	m_project_edit_properties     -> setEnabled(opened_project);
+	m_project_data                -> setEnabled(opened_project);
 	m_find_duplicate_labels->setEnabled(opened_project);
 	m_check_potentials->setEnabled(opened_project);
 	m_check_project->setEnabled(opened_project);

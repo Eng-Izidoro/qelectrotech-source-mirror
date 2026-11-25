@@ -1039,6 +1039,8 @@ set(QET_SRC_FILES
   ${QET_DIR}/sources/ui/potentialsourceswidget.h
   ${QET_DIR}/sources/ui/potentialtypeswidget.cpp
   ${QET_DIR}/sources/ui/potentialtypeswidget.h
+  ${QET_DIR}/sources/ui/projectdatadialog.cpp
+  ${QET_DIR}/sources/ui/projectdatadialog.h
   ${QET_DIR}/sources/ui/projectpropertiesdialog.cpp
   ${QET_DIR}/sources/ui/projectpropertiesdialog.h
   ${QET_DIR}/sources/ui/reportpropertiewidget.cpp

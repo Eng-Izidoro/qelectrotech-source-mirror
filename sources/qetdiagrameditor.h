@@ -332,6 +332,7 @@ class QETDiagramEditor : public QETMainWindow
 		*m_cell_rulers = nullptr,	///< Keep the folio column/row headers in sight or not
 		*m_cell_lines = nullptr,	///< Draw the folio column/row limits across the drawing or not
 		*m_project_edit_properties,	///< Edit the properties of the current project.
+		*m_project_data = nullptr,	///< Type the title block data of the current project once
 		*m_project_history,	///< The saves the current project's .qetdb keeps
 		*m_export_delivery,	///< A copy of the current .qetdb without its history
 		*m_project_add_diagram,		///< Add a diagram to the current project.
