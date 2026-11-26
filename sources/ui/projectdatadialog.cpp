@@ -138,6 +138,7 @@ void ProjectDataDialog::buildForm()
 	m_apply_to_all = new QCheckBox(
 		tr("Use this title block on every folio of the project"),
 		template_box);
+	m_apply_to_all->setChecked(true);
 	template_layout->addRow(m_apply_to_all);
 	connect(m_template_cb, &QComboBox::currentIndexChanged,
 		this, &ProjectDataDialog::updatePreview);
@@ -339,19 +340,26 @@ void ProjectDataDialog::accept()
 	m_project->setProjectProperties(formContext());
 
 	const int index = m_template_cb->currentIndex();
+	if (index >= 0 && index < m_template_collections.size())
+	{
+		const QString name = m_template_cb->itemData(index).toString();
+		const QET::QetCollection collection =
+				m_template_collections.at(index)->collection();
+
+			//The folios added from now on get the chosen title block
+		TitleBlockProperties default_tbp =
+				m_project->defaultTitleBlockProperties();
+		default_tbp.template_name = name;
+		default_tbp.collection = collection;
+		m_project->setDefaultTitleBlockProperties(default_tbp);
+	}
+
 	if (m_apply_to_all->isChecked() && index >= 0
 	    && index < m_template_collections.size())
 	{
 		const QString name = m_template_cb->itemData(index).toString();
 		const QET::QetCollection collection =
 				m_template_collections.at(index)->collection();
-
-			//The folios added later get it too
-		TitleBlockProperties default_tbp =
-				m_project->defaultTitleBlockProperties();
-		default_tbp.template_name = name;
-		default_tbp.collection = collection;
-		m_project->setDefaultTitleBlockProperties(default_tbp);
 
 		QUndoStack *stack = m_project->undoStack();
 		bool macro_open = false;
