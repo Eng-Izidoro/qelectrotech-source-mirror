@@ -124,6 +124,8 @@ class QETDiagramEditor : public QETMainWindow
 		void setUpCheckPanelDock();
 		void setUpActions       ();
 		void setUpToolBar       ();
+		void setUpRibbon        ();
+		void applyIzidoroLayoutOnce(bool no_saved_layout);
 		void setUpMenu          ();
 		
 		bool addProject(QETProject *, bool = true);
@@ -440,6 +442,7 @@ class QETDiagramEditor : public QETMainWindow
 		QMenu *windows_menu;
 		
 		QToolBar
+		*m_ribbon_tool_bar   = nullptr, ///< holds the task tabs
 		*main_tool_bar       = nullptr,
 		*view_tool_bar       = nullptr,
 		*diagram_tool_bar    = nullptr,

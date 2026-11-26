@@ -37,6 +37,8 @@
 #include <QCoreApplication>
 #include <QToolButton>
 #include <QWidgetAction>
+#include <QHash>
+#include <QTabWidget>
 #include <QGridLayout>
 #include "ElementsCollection/elementscollectionwidget.h"
 #include "ElementsCollection/elementpickerpopup.h"
@@ -2257,6 +2259,8 @@ void QETDiagramEditor::setUpToolBar()
 	DiagramToolbarSettings::markWindow(this);
 	rebuildToolBars();
 
+	setUpRibbon();
+
 	m_scripts_tool_bar = new QToolBar(tr("Scripts", "toolbar title"), this);
 	m_scripts_tool_bar->setObjectName("scripts");
 	addToolBar(Qt::TopToolBarArea, m_scripts_tool_bar);
@@ -2264,6 +2268,218 @@ void QETDiagramEditor::setUpToolBar()
 	m_scripts_tool_bar->toggleViewAction()->setVisible(false);
 	m_scripts_tool_bar->hide();
 #endif
+}
+
+/**
+	@brief QETDiagramEditor::setUpRibbon
+	One bar of tabs by task (Home, Draw, Wires, Pages and project, View),
+	each a row of the existing commands with their name under their icon.
+	It shows the same actions as the classic toolbars, which stay
+	available from their context menu.
+*/
+void QETDiagramEditor::setUpRibbon()
+{
+	auto resolve = [this](const QString &id) -> QAction * {
+		return ShortcutManager::instance().action(id, this);
+	};
+
+		//Short names under the icons; the menus keep the full ones
+	const QHash<QString, QString> short_names {
+		{"diagrameditor.new_file", tr("New")},
+		{"diagrameditor.open_file", tr("Open")},
+		{"diagrameditor.save_file", tr("Save")},
+		{"diagrameditor.save_file_as", tr("Save as")},
+		{"diagrameditor.print", tr("Print")},
+		{"diagrameditor.export_to_pdf", tr("PDF")},
+		{"diagrameditor.undo", tr("Undo")},
+		{"diagrameditor.redo", tr("Redo")},
+		{"diagrameditor.cut", tr("Cut")},
+		{"diagrameditor.copy", tr("Copy")},
+		{"diagrameditor.paste", tr("Paste")},
+		{"diagrameditor.duplicate", tr("Duplicate")},
+		{"diagrameditor.delete_selection", tr("Delete")},
+		{"diagrameditor.rotate_selection", tr("Rotate")},
+		{"diagrameditor.mode_selection",
+		 tr("Select", "task tab button")},
+		{"diagrameditor.mode_visualise", tr("Move view")},
+		{"diagrameditor.add_text", tr("Text")},
+		{"diagrameditor.add_image", tr("Image")},
+		{"diagrameditor.add_line", tr("Line")},
+		{"diagrameditor.add_rectangle", tr("Rectangle")},
+		{"diagrameditor.add_ellipse", tr("Ellipse")},
+		{"diagrameditor.add_arc", tr("Arc")},
+		{"diagrameditor.add_polyline", tr("Polygon")},
+		{"diagrameditor.place_symbol_texts", tr("Place texts")},
+		{"depth.forward", tr("To front")},
+		{"depth.backward", tr("To back")},
+		{"diagrameditor.auto_conductor", tr("Auto wire")},
+		{"diagrameditor.auto_break_conductor", tr("Auto break")},
+		{"diagrameditor.conductor_reset", tr("Reset wire")},
+		{"diagrameditor.add_cable", tr("Cable")},
+		{"diagrameditor.add_bridge", tr("Bridge")},
+		{"diagrameditor.place_corner", tr("Corner")},
+		{"diagrameditor.place_tee", tr("Junction")},
+		{"diagrameditor.place_report_outgoing", tr("Going to")},
+		{"diagrameditor.place_report_incoming", tr("Coming from")},
+		{"diagrameditor.add_terminal_strip", tr("Terminal strip")},
+		{"diagrameditor.terminal_strip_plugin", tr("Terminals")},
+		{"diagrameditor.project_add_diagram", tr("New page")},
+		{"diagrameditor.remove_diagram_from_project",
+		 tr("Delete page")},
+		{"diagrameditor.edit_diagram_properties", tr("Page")},
+		{"diagrameditor.project_data", tr("Project data")},
+		{"diagrameditor.project_edit_properties", tr("Properties")},
+		{"diagrameditor.check_project", tr("Check")},
+		{"diagrameditor.export_wiring_list", tr("Wiring list")},
+		{"diagrameditor.zoom_content", tr("Fit content")},
+		{"diagrameditor.zoom_fit", tr("Fit page")},
+		{"diagrameditor.zoom_reset", tr("Zoom 100%")},
+		{"diagrameditor.draw_grid", tr("Grid")},
+		{"diagrameditor.grid_snap", tr("Snap")},
+		{"diagrameditor.draw_guides", tr("Guides")}
+	};
+
+	const QString sep = DiagramToolbarSettings::separatorId();
+	const QList<QPair<QString, QStringList>> pages {
+		{tr("Home"), {
+			 "diagrameditor.new_file",
+			 "diagrameditor.open_file",
+			 "diagrameditor.save_file",
+			 "diagrameditor.save_file_as",
+			 "diagrameditor.print",
+			 "diagrameditor.export_to_pdf",
+			 sep,
+			 "diagrameditor.undo",
+			 "diagrameditor.redo",
+			 sep,
+			 "diagrameditor.cut",
+			 "diagrameditor.copy",
+			 "diagrameditor.paste",
+			 "diagrameditor.duplicate",
+			 sep,
+			 "diagrameditor.delete_selection",
+			 "diagrameditor.rotate_selection"}},
+		{tr("Draw"), {
+			 "diagrameditor.mode_selection",
+			 "diagrameditor.mode_visualise",
+			 sep,
+			 "diagrameditor.add_text",
+			 "diagrameditor.add_image",
+			 "diagrameditor.add_line",
+			 "diagrameditor.add_rectangle",
+			 "diagrameditor.add_ellipse",
+			 "diagrameditor.add_arc",
+			 "diagrameditor.add_polyline",
+			 sep,
+			 "diagrameditor.place_symbol_texts",
+			 sep,
+			 "depth.forward",
+			 "depth.backward"}},
+		{tr("Wires"), {
+			 "diagrameditor.auto_conductor",
+			 "diagrameditor.auto_break_conductor",
+			 "diagrameditor.conductor_reset",
+			 sep,
+			 "diagrameditor.add_cable",
+			 "diagrameditor.add_bridge",
+			 sep,
+			 "diagrameditor.place_corner",
+			 "diagrameditor.place_tee",
+			 "diagrameditor.place_report_outgoing",
+			 "diagrameditor.place_report_incoming",
+			 sep,
+			 "diagrameditor.add_terminal_strip",
+			 "diagrameditor.terminal_strip_plugin"}},
+		{tr("Pages and project"), {
+			 "diagrameditor.project_add_diagram",
+			 "diagrameditor.remove_diagram_from_project",
+			 "diagrameditor.edit_diagram_properties",
+			 sep,
+			 "diagrameditor.project_data",
+			 "diagrameditor.project_edit_properties",
+			 sep,
+			 "diagrameditor.check_project",
+			 "diagrameditor.export_wiring_list"}},
+		{tr("View"), {
+			 "diagrameditor.zoom_content",
+			 "diagrameditor.zoom_fit",
+			 "diagrameditor.zoom_reset",
+			 sep,
+			 "diagrameditor.draw_grid",
+			 "diagrameditor.grid_snap",
+			 "diagrameditor.draw_guides"}}
+	};
+
+	auto *tabs = new QTabWidget(this);
+	tabs->setDocumentMode(true);
+	tabs->setObjectName(QStringLiteral("izidoro_ribbon_tabs"));
+	for (const QPair<QString, QStringList> &page : pages)
+	{
+		auto *row = new QToolBar(tabs);
+		row->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+		row->setIconSize(QSize(24, 24));
+		row->setMovable(false);
+		row->setFloatable(false);
+		for (const QString &id : page.second)
+		{
+			if (id == sep) {
+				row->addSeparator();
+				continue;
+			}
+			QAction *action = resolve(id);
+			if (!action) continue;
+			if (short_names.contains(id))
+				action->setIconText(short_names.value(id));
+			row->addAction(action);
+			const QList<QAction *> connection_actions =
+				m_connection_actions.values();
+			if (connection_actions.contains(action))
+				if (auto *button = qobject_cast<QToolButton *>(
+					    row->widgetForAction(action)))
+					button->setPopupMode(
+						QToolButton::MenuButtonPopup);
+		}
+		tabs->addTab(row, page.first);
+	}
+	tabs->setStyleSheet(QStringLiteral(
+		"QToolButton { padding: 2px 4px; min-width: 46px; }"));
+
+	m_ribbon_tool_bar = new QToolBar(tr("Tasks", "toolbar title"), this);
+	m_ribbon_tool_bar->setObjectName(QStringLiteral("izidoro_ribbon"));
+	m_ribbon_tool_bar->setMovable(false);
+	m_ribbon_tool_bar->addWidget(tabs);
+	insertToolBar(main_tool_bar, m_ribbon_tool_bar);
+	insertToolBarBreak(main_tool_bar);
+
+}
+
+/**
+	@brief QETDiagramEditor::applyIzidoroLayoutOnce
+	Show the task tabs instead of the classic toolbars, and close the
+	panels seldom used: always when no layout was saved
+	(@a no_saved_layout), and once over a layout saved by an older
+	version. Everything stays available from the toolbar context menu and
+	the Windows menu, and the user's later layout is kept.
+*/
+void QETDiagramEditor::applyIzidoroLayoutOnce(bool no_saved_layout)
+{
+	QSettings settings;
+	const QString key = QStringLiteral("izidoro/layout_version");
+	if (!no_saved_layout && settings.value(key, 0).toInt() >= 1) return;
+
+	for (QToolBar *toolbar : {main_tool_bar, view_tool_bar,
+				  diagram_tool_bar, m_add_item_tool_bar,
+				  m_connections_tool_bar, m_depth_tool_bar})
+		if (toolbar) toolbar->hide();
+	if (m_ribbon_tool_bar) m_ribbon_tool_bar->show();
+	if (m_autonumbering_dock) m_autonumbering_dock->hide();
+	if (m_component_palette_dock) m_component_palette_dock->show();
+	if (m_qdw_elmt_collection) m_qdw_elmt_collection->show();
+		//Empty, it shrinks to its title, and grows with the selection
+	if (m_selection_properties_editor)
+		m_selection_properties_editor->show();
+
+	settings.setValue(key, 1);
 }
 
 /**
@@ -4942,11 +5158,14 @@ void QETDiagramEditor::readSettingsState()
 
 	// etat de la fenetre (barres d'outils, docks...)
 	QVariant state = settings.value("diagrameditor/state");
+	bool restored = false;
 	if (state.isValid()) {
-		if (!restoreState(state.toByteArray())) {
+		restored = restoreState(state.toByteArray());
+		if (!restored) {
 			settings.remove("diagrameditor/state");
 		}
 	}
+	applyIzidoroLayoutOnce(!restored);
 }
 
 /**
