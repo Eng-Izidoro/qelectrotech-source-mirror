@@ -551,7 +551,9 @@ QTreeWidgetItem *GenericPanel::updateDiagramItem(QTreeWidgetItem *diagram_qtwi,
 				     "Fallback label when a diagram has no title");
 	}
 
-	if (settings.value("genericpanel/folio", true).toBool())
+		//Izidoro fork: by default the panel shows "01 - Title" rather
+		//than the folio text of the title block ("1/3 - Title")
+	if (settings.value("genericpanel/folio", false).toBool())
 	{
 		QString displayed_label =
 				diagram ->border_and_titleblock.finalfolio();
@@ -581,7 +583,8 @@ QTreeWidgetItem *GenericPanel::updateDiagramItem(QTreeWidgetItem *diagram_qtwi,
 				   "label displayed for a diagram in the panel ;"
 				   " %1 is the folio index, %2 is the diagram title"
 				   )
-				).arg(diagram_folio_idx + 1).arg(displayed_title);
+				).arg(diagram_folio_idx + 1, 2, 10, QChar('0'))
+				.arg(displayed_title);
 		}
 
 		diagram_qtwi -> setText(0, displayed_label);

@@ -27,6 +27,10 @@
 #include "shortcutmanager.h"
 #include "titleblock/templatedeleter.h"
 #include <QFileInfo>
+#include "titleblockproperties.h"
+#include "undocommand/changetitleblockcommand.h"
+#include <QRegularExpression>
+#include <QInputDialog>
 #include <QMessageBox>
 #include "qetgraphicsitem/element.h"
 #include "qetgraphicsitem/dynamicelementtextitem.h"
@@ -80,12 +84,38 @@ ElementsPanelWidget::ElementsPanelWidget(QWidget *parent) : QWidget(parent) {
 	prj_move_diagram_top     = new QAction(QET::Icons::GoTop,                  tr("Move this sheet to the beginning"),               this);
 	prj_move_diagram_downx10 = new QAction(QET::Icons::GoDownDouble,           tr("Move down this sheet × 10"),           this);
 	prj_move_diagram_downx100 = new QAction(QET::Icons::GoDownDouble,           tr("Move down this sheet × 100"),           this);
+	m_rename_diagram         = new QAction(QET::Icons::DiagramAdd,              tr("Rename this sheet..."),             this);
 	tbt_add               = new QAction(QET::Icons::TitleBlock,                tr("New template"),                   this);
 	tbt_edit              = new QAction(QET::Icons::TitleBlock,                tr("Edit this template"),              this);
 	tbt_remove            = new QAction(QET::Icons::TitleBlock,                tr("Delete this template"),              this);
 
 
 	ShortcutManager::instance().registerAction(prj_del_diagram, "panel.delete_diagram", tr("Elements panel"), QKeySequence(Qt::Key_Delete));
+	ShortcutManager::instance().registerAction(m_rename_diagram, "panel.rename_diagram", tr("Elements panel"), QKeySequence(Qt::Key_F2));
+	m_rename_diagram->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+	elements_panel->addAction(m_rename_diagram);
+
+		//Folios most projects have: the numbered ones follow on from the
+		//last folio of the same kind ("Control circuit 02", "...03")
+	m_folio_models_menu = new QMenu(tr("Add a sheet from a model"), this);
+	m_folio_models_menu->setIcon(QET::Icons::DiagramAdd);
+	const QList<QPair<QString, bool>> folio_models {
+		{tr("Cover"), false},
+		{tr("Construction data"), false},
+		{tr("Symbols"), false},
+		{tr("Power circuit"), true},
+		{tr("Control circuit"), true},
+		{tr("Terminal strip"), true},
+		{tr("Panel layout"), false}
+	};
+	for (const QPair<QString, bool> &model : folio_models)
+	{
+		QAction *model_action = m_folio_models_menu->addAction(model.first);
+		connect(model_action, &QAction::triggered, this,
+			[this, model]() {
+				newDiagramFromModel(model.first, model.second);
+			});
+	}
 	ShortcutManager::instance().registerAction(prj_move_diagram_up, "panel.move_diagram_up", tr("Elements panel"), QKeySequence(Qt::Key_F3));
 	ShortcutManager::instance().registerAction(prj_move_diagram_down, "panel.move_diagram_down", tr("Elements panel"), QKeySequence(Qt::Key_F4));
 	ShortcutManager::instance().registerAction(prj_move_diagram_top, "panel.move_diagram_top", tr("Elements panel"), QKeySequence(Qt::Key_F5));
@@ -111,6 +141,8 @@ ElementsPanelWidget::ElementsPanelWidget(QWidget *parent) : QWidget(parent) {
 	connect(prj_edit_prop, &QAction::triggered, this, &ElementsPanelWidget::editProjectProperties);
 	connect(prj_prop_diagram, &QAction::triggered, this, &ElementsPanelWidget::editDiagramProperties);
 	connect(prj_add_diagram, &QAction::triggered, this, &ElementsPanelWidget::newDiagram);
+	connect(m_rename_diagram, &QAction::triggered, this, &ElementsPanelWidget::renameDiagram);
+	connect(elements_panel, &ElementsPanel::requestForDiagramMove, this, &ElementsPanelWidget::requestForDiagramMoveTo);
 	connect(prj_insert_diagram_above, &QAction::triggered, this, &ElementsPanelWidget::insertDiagramAbove);
 	connect(prj_insert_diagram_below, &QAction::triggered, this, &ElementsPanelWidget::insertDiagramBelow);
 	connect(prj_del_diagram, &QAction::triggered, this, &ElementsPanelWidget::deleteDiagram);
@@ -253,6 +285,75 @@ void ElementsPanelWidget::newDiagram()
 	if (QETProject *selected_project = elements_panel -> selectedProject()) {
 		emit(requestForNewDiagram(selected_project));
 	}
+}
+
+/**
+	@brief ElementsPanelWidget::renameDiagram
+	Ask for a new title for the selected folio; the change can be undone.
+*/
+void ElementsPanelWidget::renameDiagram()
+{
+	Diagram *diagram = elements_panel->selectedDiagram();
+	if (!diagram || !diagram->project() || diagram->project()->isReadOnly())
+		return;
+
+	const TitleBlockProperties old_tbp =
+			diagram->border_and_titleblock.exportTitleBlock();
+	bool ok = false;
+	const QString title = QInputDialog::getText(
+				this, tr("Rename the sheet"), tr("Title of the sheet:"),
+				QLineEdit::Normal, old_tbp.title, &ok).trimmed();
+	if (!ok || title == old_tbp.title) return;
+
+	TitleBlockProperties new_tbp = old_tbp;
+	new_tbp.title = title;
+	diagram->project()->undoStack()->push(
+				new ChangeTitleBlockCommand(diagram, old_tbp, new_tbp));
+}
+
+/**
+	@brief ElementsPanelWidget::newDiagramFromModel
+	Add a folio with the title of a model, right after the selected folio
+	or at the end of the project.
+	@param title : title of the model
+	@param numbered : true to number the folio after the last one of the
+	same model ("Power circuit 01", "Power circuit 02"...)
+*/
+void ElementsPanelWidget::newDiagramFromModel(const QString &title,
+					      bool numbered)
+{
+		//A folio row or the project row can be selected
+	QETProject *project = elements_panel->selectedProject();
+	if (!project)
+		if (Diagram *selected = elements_panel->selectedDiagram())
+			project = selected->project();
+	if (!project || project->isReadOnly()) return;
+
+	const QList<Diagram *> folios = project->folios();
+	QString final_title = title;
+	if (numbered)
+	{
+		const QRegularExpression rx(
+			QStringLiteral("^%1\\s+(\\d+)$")
+				.arg(QRegularExpression::escape(title)),
+			QRegularExpression::CaseInsensitiveOption);
+		int last = 0;
+		for (Diagram *folio : folios) {
+			const QRegularExpressionMatch match = rx.match(
+				folio->border_and_titleblock.title().trimmed());
+			if (match.hasMatch())
+				last = qMax(last, match.captured(1).toInt());
+		}
+		final_title = QStringLiteral("%1 %2")
+				.arg(title).arg(last + 1, 2, 10, QChar('0'));
+	}
+
+	int position = -1;
+	if (Diagram *selected = elements_panel->selectedDiagram())
+		if (selected->project() == project)
+			position = project->folioIndex(selected) + 1;
+
+	emit requestForNewDiagramWithTitle(project, position, final_title);
 }
 
 /**
@@ -540,10 +641,13 @@ void ElementsPanelWidget::handleContextMenu(const QPoint &pos) {
 			context_menu -> addAction(prj_activate);
 			context_menu -> addAction(prj_edit_prop);
 			context_menu -> addAction(prj_add_diagram);
+			context_menu -> addMenu(m_folio_models_menu);
 			context_menu -> addAction(prj_close);
 			break;
 		case QET::Diagram:
 			context_menu -> addAction(prj_prop_diagram);
+			context_menu -> addAction(m_rename_diagram);
+			context_menu -> addMenu(m_folio_models_menu);
 			context_menu -> addAction(prj_insert_diagram_above);
 			context_menu -> addAction(prj_insert_diagram_below);
 			context_menu -> addAction(prj_del_diagram);

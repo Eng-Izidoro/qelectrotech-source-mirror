@@ -18,6 +18,7 @@
 #ifndef PANELAPPAREILS_H
 #define PANELAPPAREILS_H
 
+#include <QPointer>
 #include "genericpanel.h"
 #include "titleblock/templatelocation.h"
 
@@ -58,6 +59,8 @@ class ElementsPanel : public GenericPanel {
 	void requestForProjectPropertiesEdition();
 		// Signal to open the diagram properties
 	void requestForDiagramPropertiesEdition();
+		// A folio was dragged onto another one: move it to that position
+	void requestForDiagramMove(Diagram *diagram, int position);
 
 	public slots:
 	void slot_clicked(QTreeWidgetItem *, int);
@@ -74,6 +77,9 @@ class ElementsPanel : public GenericPanel {
 
 	protected:
 	void startDrag(Qt::DropActions) override;
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dragMoveEvent(QDragMoveEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
 	void startTitleBlockTemplateDrag(const TitleBlockTemplateLocation &);
 	bool matchesFilter(const QTreeWidgetItem *, const QString&) const;
 	
@@ -81,6 +87,7 @@ class ElementsPanel : public GenericPanel {
 	void panelContentChange();
 	
 	private:
+		static bool showTitleBlockTemplates();
 		QTreeWidgetItem *addProject   (QETProject *, QTreeWidgetItem * = nullptr, PanelOptions = AddAllChild) override;
 		QTreeWidgetItem *updateTemplatesCollectionItem(QTreeWidgetItem *, TitleBlockTemplatesCollection *, PanelOptions = AddAllChild, bool = false) override;
 		QTreeWidgetItem *updateTemplateItem        (QTreeWidgetItem *, const TitleBlockTemplateLocation &,  PanelOptions, bool = false) override;
@@ -88,9 +95,10 @@ class ElementsPanel : public GenericPanel {
 	// attributes
 	private:
 	QSet<QETProject *> projects_to_display_;       ///< list of projects that have been added to this panel
-	QTreeWidgetItem *common_tbt_collection_item_;  ///< pointer to the item representing the common templates collection
-	QTreeWidgetItem *company_tbt_collection_item_; ///< pointer to the item representing the company's templates collection
-	QTreeWidgetItem *custom_tbt_collection_item_;  ///< pointer to the item representing the user templates collection
+	QTreeWidgetItem *common_tbt_collection_item_ = nullptr;  ///< pointer to the item representing the common templates collection
+	QTreeWidgetItem *company_tbt_collection_item_ = nullptr; ///< pointer to the item representing the company's templates collection
+	QTreeWidgetItem *custom_tbt_collection_item_ = nullptr;  ///< pointer to the item representing the user templates collection
+	QPointer<Diagram> m_dragged_diagram; ///< folio being dragged to a new place
 	bool first_reload_;                            ///< used to distinguish the first time this panel is reloaded
 	QString filter_;                               ///< Currently applied filter
 	QStringList filter_list_;                       ///< Currently applied list of filter

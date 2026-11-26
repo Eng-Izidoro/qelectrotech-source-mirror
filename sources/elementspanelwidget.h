@@ -58,6 +58,8 @@ class ElementsPanelWidget : public QWidget {
 		*prj_move_diagram_downx10,
 		*prj_move_diagram_downx100;
 	QAction *tbt_add, *tbt_edit, *tbt_remove;
+	QAction *m_rename_diagram = nullptr; ///< change the title of a folio
+	QMenu *m_folio_models_menu = nullptr; ///< add a folio from a model
 	QMenu *context_menu;
 	QLineEdit *filter_textfield;
 	
@@ -69,6 +71,8 @@ class ElementsPanelWidget : public QWidget {
 	void requestForProject(QETProject *);
 	void requestForNewDiagram(QETProject *);
 	void requestForNewDiagramAt(QETProject *, int);
+	void requestForNewDiagramWithTitle(QETProject *, int, const QString &);
+	void requestForDiagramMoveTo(Diagram *diagram, int position);
 	void requestForProjectClosing(QETProject *);
 	void requestForProjectPropertiesEdition(QETProject *);
 	void requestForDiagramPropertiesEdition(Diagram *);
@@ -91,6 +95,8 @@ class ElementsPanelWidget : public QWidget {
 	void editProjectProperties();
 	void editDiagramProperties();
 	void newDiagram();
+	void renameDiagram();
+	void newDiagramFromModel(const QString &title, bool numbered);
 	void insertDiagramAbove();
 	void insertDiagramBelow();
 	void deleteDiagram();

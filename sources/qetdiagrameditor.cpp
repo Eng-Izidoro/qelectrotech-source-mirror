@@ -84,6 +84,7 @@
 #include "qetgraphicsitem/independenttextitem.h"
 #include "QPropertyUndoCommand/qpropertyundocommand.h"
 #include "ui/projectdatadialog.h"
+#include "undocommand/movediagramcommand.h"
 #include "ui/projectpropertiesdialog.h"
 #include "projectview.h"
 #include "qetproject.h"
@@ -440,6 +441,8 @@ void QETDiagramEditor::setUpElementsPanel()
 	connect(pa, &ElementsPanelWidget::requestForProjectClosing, this, qOverload<QETProject*>(&QETDiagramEditor::closeProject));
 	connect(pa, &ElementsPanelWidget::requestForProjectPropertiesEdition, this, qOverload<QETProject*>(&QETDiagramEditor::editProjectProperties));
 	connect(pa, &ElementsPanelWidget::requestForNewDiagram, this, &QETDiagramEditor::addDiagramToProject);
+	connect(pa, &ElementsPanelWidget::requestForNewDiagramWithTitle, this, &QETDiagramEditor::addDiagramToProjectWithTitle);
+	connect(pa, &ElementsPanelWidget::requestForDiagramMoveTo, this, &QETDiagramEditor::moveDiagramTo);
 	connect(pa, &ElementsPanelWidget::requestForNewDiagramAt, this, &QETDiagramEditor::addDiagramToProjectAt);
 	connect(pa, &ElementsPanelWidget::requestForDiagramPropertiesEdition, this, qOverload<Diagram*>(&QETDiagramEditor::editDiagramProperties));
 	connect(pa, &ElementsPanelWidget::requestForDiagramsDeletion, this, &QETDiagramEditor::removeDiagrams);
@@ -5041,6 +5044,45 @@ void QETDiagramEditor::addDiagramToProjectAt(QETProject *project, int pos)
 		project_view->project()->addNewDiagram(pos);
 	}
 }
+/**
+	@brief QETDiagramEditor::addDiagramToProjectWithTitle
+	Add a folio with a title to the project.
+	@param project : the project
+	@param pos : position of the new folio; -1 for the end
+	@param title : its title
+*/
+void QETDiagramEditor::addDiagramToProjectWithTitle(QETProject *project,
+						    int pos,
+						    const QString &title)
+{
+	if (!project) {
+		return;
+	}
+
+	if (ProjectView *project_view = findProject(project))
+	{
+		activateProject(project);
+		project_view->project()->addNewDiagram(pos, title);
+	}
+}
+
+/**
+	@brief QETDiagramEditor::moveDiagramTo
+	Move a folio to a position of its project, as one undoable step.
+	@param diagram : the folio
+	@param position : its new position, from 0
+*/
+void QETDiagramEditor::moveDiagramTo(Diagram *diagram, int position)
+{
+	if (!diagram) return;
+	QETProject *project = diagram->project();
+	if (!project || project->isReadOnly()) return;
+	if (ProjectView *project_view = findProject(project)) {
+		project->undoStack()->push(
+			new MoveDiagramCommand(project_view, diagram, position));
+	}
+}
+
 /**
  * @brief QETDiagramEditor::removeDiagram
  * Wrapper für einzelne Diagramme, um Abwärtskompatibilität zu erhalten.

@@ -23,6 +23,11 @@
 #include "qetproject.h"
 #include "titleblock/templatescollection.h"
 #include <QApplication>
+#include <QMimeData>
+#include <QDropEvent>
+#include <QDragEnterEvent>
+#include <QDrag>
+#include <QSettings>
 
 /*
 	Lorsque le flag ENABLE_PANEL_DND_CHECKS est defini, le panel d'elements
@@ -88,6 +93,91 @@ void ElementsPanel::startDrag(Qt::DropActions supportedActions) {
 		startTitleBlockTemplateDrag(tbt_location);
 		return;
 	}
+
+		//A folio row is dragged to put the folio somewhere else
+	QTreeWidgetItem *current_qtwi = currentItem();
+	if (current_qtwi && current_qtwi->type() == QET::Diagram)
+	{
+		m_dragged_diagram = valueForItem<Diagram *>(current_qtwi);
+		if (!m_dragged_diagram) return;
+
+		auto *mime_data = new QMimeData();
+		mime_data->setData(QStringLiteral("application/x-qet-folio-move"),
+				   QByteArray());
+		auto *drag = new QDrag(this);
+		drag->setMimeData(mime_data);
+		drag->exec(Qt::MoveAction);
+		m_dragged_diagram.clear();
+	}
+}
+
+/**
+	@brief ElementsPanel::dragEnterEvent
+	Accept a folio dragged from this panel; leave other drags as they were.
+*/
+void ElementsPanel::dragEnterEvent(QDragEnterEvent *event)
+{
+	if (event->mimeData()->hasFormat(
+		    QStringLiteral("application/x-qet-folio-move"))
+	    && m_dragged_diagram) {
+		event->acceptProposedAction();
+		return;
+	}
+	GenericPanel::dragEnterEvent(event);
+}
+
+/**
+	@brief ElementsPanel::dragMoveEvent
+	A dragged folio can be dropped on another folio of its own project.
+*/
+void ElementsPanel::dragMoveEvent(QDragMoveEvent *event)
+{
+	if (!event->mimeData()->hasFormat(
+		    QStringLiteral("application/x-qet-folio-move"))) {
+		GenericPanel::dragMoveEvent(event);
+		return;
+	}
+
+	QTreeWidgetItem *target = itemAt(event->position().toPoint());
+	Diagram *target_diagram = (target && target->type() == QET::Diagram)
+			? valueForItem<Diagram *>(target) : nullptr;
+	if (m_dragged_diagram && target_diagram
+	    && target_diagram != m_dragged_diagram
+	    && target_diagram->project() == m_dragged_diagram->project()
+	    && !target_diagram->project()->isReadOnly()) {
+		setCurrentItem(target);
+		event->acceptProposedAction();
+	} else {
+		event->ignore();
+	}
+}
+
+/**
+	@brief ElementsPanel::dropEvent
+	The dragged folio takes the place of the folio it is dropped on.
+*/
+void ElementsPanel::dropEvent(QDropEvent *event)
+{
+	if (!event->mimeData()->hasFormat(
+		    QStringLiteral("application/x-qet-folio-move"))) {
+		GenericPanel::dropEvent(event);
+		return;
+	}
+
+	QTreeWidgetItem *target = itemAt(event->position().toPoint());
+	Diagram *target_diagram = (target && target->type() == QET::Diagram)
+			? valueForItem<Diagram *>(target) : nullptr;
+	if (!m_dragged_diagram || !target_diagram
+	    || target_diagram == m_dragged_diagram
+	    || target_diagram->project() != m_dragged_diagram->project()) {
+		event->ignore();
+		return;
+	}
+
+	const int position =
+			target_diagram->project()->folioIndex(target_diagram);
+	event->acceptProposedAction();
+	emit requestForDiagramMove(m_dragged_diagram, position);
 }
 
 /**
@@ -115,6 +205,18 @@ void ElementsPanel::panelContentChange()
 	if (!filter_.isEmpty()) {
 		filter(filter_);
 	}
+}
+
+/**
+	@brief ElementsPanel::showTitleBlockTemplates
+	@return true when the Projects panel lists the title block template
+	collections, which most users never open
+*/
+bool ElementsPanel::showTitleBlockTemplates()
+{
+	return QSettings().value(
+		QStringLiteral("genericpanel/show_titleblock_templates"),
+		false).toBool();
 }
 
 /**
@@ -146,11 +248,19 @@ QTreeWidgetItem *ElementsPanel::addProject(QETProject *project,
 	bool first_add = (first_reload_ || !projects_to_display_.contains(project));
 	clearSelection();
 
-	// create the QTreeWidgetItem representing the project
-	QTreeWidgetItem *qtwi_project = GenericPanel::addProject(project, nullptr, GenericPanel::All);
-	// the project will be inserted right before the common tb templates collection
+	// create the QTreeWidgetItem representing the project; its title
+	// block templates are listed only when asked for in the settings
+	PanelOptions project_options = GenericPanel::All;
+	if (!showTitleBlockTemplates())
+		project_options &= ~PanelOptions(AddAllChildTemplates);
+	QTreeWidgetItem *qtwi_project =
+			GenericPanel::addProject(project, nullptr, project_options);
+	// the project will be inserted right before the common tb templates
+	// collection, or at the end when the collections are not listed
 	invisibleRootItem() -> insertChild(
-		indexOfTopLevelItem(common_tbt_collection_item_),
+		common_tbt_collection_item_
+			? indexOfTopLevelItem(common_tbt_collection_item_)
+			: topLevelItemCount(),
 									   qtwi_project
 	);
 
@@ -270,30 +380,36 @@ void ElementsPanel::reload()
 	QIcon company_icon = QET::Icons::Company;
 	QIcon user_icon = QIcon::fromTheme("go-home");
 
-	// load the common title block templates collection
-	TitleBlockTemplatesCollection *common_tbt_collection = QETApp::commonTitleBlockTemplatesCollection();
-	common_tbt_collection_item_ = addTemplatesCollection(common_tbt_collection, invisibleRootItem());
-	common_tbt_collection_item_ -> setIcon(0, system_icon);
-	common_tbt_collection_item_ -> setStatusTip(0, tr("Double-click to collapse or expand the QElectrotech title blocks collection", "Status tip"));
-	common_tbt_collection_item_ -> setWhatsThis(0, tr("This is the title blocks collection provided along with QElectroTech. Installed as a system component, you normally cannot customize it.", "\"What's this\" tip"));
-	if (first_reload_) common_tbt_collection_item_ -> setExpanded(true);
+		//Izidoro fork: the title block template collections are hidden
+		//unless the setting genericpanel/show_titleblock_templates is on
+	if (showTitleBlockTemplates())
+	{
+		// load the common title block templates collection
+		TitleBlockTemplatesCollection *common_tbt_collection = QETApp::commonTitleBlockTemplatesCollection();
+		common_tbt_collection_item_ = addTemplatesCollection(common_tbt_collection, invisibleRootItem());
+		common_tbt_collection_item_ -> setIcon(0, system_icon);
+		common_tbt_collection_item_ -> setStatusTip(0, tr("Double-click to collapse or expand the QElectrotech title blocks collection", "Status tip"));
+		common_tbt_collection_item_ -> setWhatsThis(0, tr("This is the title blocks collection provided along with QElectroTech. Installed as a system component, you normally cannot customize it.", "\"What's this\" tip"));
+		if (first_reload_) common_tbt_collection_item_ -> setExpanded(true);
 	
-	// load the company title block templates collection
-	TitleBlockTemplatesCollection *company_tbt_collection = QETApp::companyTitleBlockTemplatesCollection();
-	company_tbt_collection_item_ = addTemplatesCollection(company_tbt_collection, invisibleRootItem());
-	company_tbt_collection_item_ -> setIcon(0, company_icon);
-	company_tbt_collection_item_ -> setStatusTip(0, tr("Double-click to collapse or expand the title block company collection", "Status tip"));
-	company_tbt_collection_item_ -> setWhatsThis(0, tr("This is the title block company collection -- use it to create, store and edit your own title blocks.", "\"What's this\" tip"));
-	if (first_reload_) company_tbt_collection_item_ -> setExpanded(true);
+		// load the company title block templates collection
+		TitleBlockTemplatesCollection *company_tbt_collection = QETApp::companyTitleBlockTemplatesCollection();
+		company_tbt_collection_item_ = addTemplatesCollection(company_tbt_collection, invisibleRootItem());
+		company_tbt_collection_item_ -> setIcon(0, company_icon);
+		company_tbt_collection_item_ -> setStatusTip(0, tr("Double-click to collapse or expand the title block company collection", "Status tip"));
+		company_tbt_collection_item_ -> setWhatsThis(0, tr("This is the title block company collection -- use it to create, store and edit your own title blocks.", "\"What's this\" tip"));
+		if (first_reload_) company_tbt_collection_item_ -> setExpanded(true);
 
-	// load the custom title block templates collection
-	TitleBlockTemplatesCollection *custom_tbt_collection = QETApp::customTitleBlockTemplatesCollection();
-	custom_tbt_collection_item_ = addTemplatesCollection(custom_tbt_collection, invisibleRootItem());
-	custom_tbt_collection_item_ -> setIcon(0, user_icon);
-	custom_tbt_collection_item_ -> setStatusTip(0, tr("Double-click to collapse or expand your own title blocks collection", "Status tip"));
-	custom_tbt_collection_item_ -> setWhatsThis(0, tr("This is your custom title blocks collection -- use it to create, store and edit your own title blocks.", "\"What's this\" tip"));
-	if (first_reload_) custom_tbt_collection_item_ -> setExpanded(true);
+		// load the custom title block templates collection
+		TitleBlockTemplatesCollection *custom_tbt_collection = QETApp::customTitleBlockTemplatesCollection();
+		custom_tbt_collection_item_ = addTemplatesCollection(custom_tbt_collection, invisibleRootItem());
+		custom_tbt_collection_item_ -> setIcon(0, user_icon);
+		custom_tbt_collection_item_ -> setStatusTip(0, tr("Double-click to collapse or expand your own title blocks collection", "Status tip"));
+		custom_tbt_collection_item_ -> setWhatsThis(0, tr("This is your custom title blocks collection -- use it to create, store and edit your own title blocks.", "\"What's this\" tip"));
+		if (first_reload_) custom_tbt_collection_item_ -> setExpanded(true);
 	
+	}
+
 	// add projects
 	foreach(QETProject *project, projects_to_display_.values()) {
 		addProject(project);
