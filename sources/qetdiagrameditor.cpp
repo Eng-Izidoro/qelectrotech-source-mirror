@@ -83,6 +83,7 @@
 #include "ui/textdestinationdialog.h"
 #include "qetgraphicsitem/independenttextitem.h"
 #include "QPropertyUndoCommand/qpropertyundocommand.h"
+#include "ui/componentpalettewidget.h"
 #include "ui/projectdatadialog.h"
 #include "undocommand/movediagramcommand.h"
 #include "ui/projectpropertiesdialog.h"
@@ -352,7 +353,21 @@ QETDiagramEditor::QETDiagramEditor(const QStringList &files, QWidget *parent) :
 	setUpToolBar();
 	setUpMenu();
 
+		//The symbols used most, under the folio list; added before the
+		//folio list is tabbed with Undo, or it would become a tab too
+	m_component_palette_dock = new QDockWidget(tr("Components", "dock title"), this);
+	m_component_palette_dock->setObjectName("component_palette");
+	m_component_palette_dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+	m_component_palette_dock->setFeatures(
+		QDockWidget::DockWidgetClosable |
+		QDockWidget::DockWidgetMovable |
+		QDockWidget::DockWidgetFloatable);
+	m_component_palette_dock->setMinimumWidth(190);
+	m_component_palette_dock->setWidget(new ComponentPaletteWidget(m_component_palette_dock));
+	addDockWidget(Qt::LeftDockWidgetArea, m_component_palette_dock, Qt::Vertical);
+
 	tabifyDockWidget(qdw_undo, qdw_pa);
+
 
 		//By default the windows is maximised
 	setMinimumSize(QSize(500, 350));

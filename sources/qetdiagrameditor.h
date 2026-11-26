@@ -464,6 +464,7 @@ class QETDiagramEditor : public QETMainWindow
 		QUndoGroup undo_group;
 		AutoNumberingDockWidget *m_autonumbering_dock;
 		DeviceNavigatorDockWidget *m_device_navigator_dock = nullptr;
+		QDockWidget *m_component_palette_dock = nullptr; ///< symbols by category
 		CheckPanelDockWidget *m_check_panel_dock = nullptr;
 		int activeSubWindowIndex;
 		SearchAndReplaceWidget m_search_and_replace_widget;
