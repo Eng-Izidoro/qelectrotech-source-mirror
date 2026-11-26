@@ -4069,9 +4069,10 @@ bool QETProject::usesTitleBlockTemplate(const TitleBlockTemplateLocation &locati
 	This is pushed as an undoable AddDiagramCommand: use undoStack()->undo()
 	to remove it again.
 	@param pos
+	@param title : title of the new folio; empty, the default one
 	@return the new created diagram
 */
-Diagram *QETProject::addNewDiagram(int pos)
+Diagram *QETProject::addNewDiagram(int pos, const QString &title)
 {
 	if (isReadOnly()) {
 		return(nullptr);
@@ -4099,6 +4100,16 @@ Diagram *QETProject::addNewDiagram(int pos)
 			titleblock.higher_location = previous.higherLocation();
 		}
 	}
+		//Izidoro fork: projects saved before the company title block was
+		//the default keep an empty one for their new folios
+	if (titleblock.template_name.isEmpty()) {
+		const TitleBlockProperties app_default =
+				TitleBlockProperties::defaultProperties();
+		titleblock.template_name = app_default.template_name;
+		titleblock.collection = app_default.collection;
+	}
+		//A folio made from a model comes with its title
+	if (!title.isEmpty()) titleblock.title = title;
 	diagram->border_and_titleblock.importTitleBlock(titleblock);
 	diagram->defaultConductorProperties = defaultConductorProperties();
 	diagram->queueValuesStore();

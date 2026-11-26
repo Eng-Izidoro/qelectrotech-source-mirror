@@ -499,7 +499,7 @@ class QETProject : public QObject
 		Diagram *diagramByUuid(const QUuid &uuid);
 
 	public slots:
-		Diagram *addNewDiagram(int pos = -1);
+		Diagram *addNewDiagram(int pos = -1, const QString &title = QString());
 		void removeDiagram(Diagram *);
 		void diagramOrderChanged(int, int);
 		void setModified(bool);
