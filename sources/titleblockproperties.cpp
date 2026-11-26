@@ -217,6 +217,13 @@ TitleBlockProperties TitleBlockProperties::defaultProperties()
 	TitleBlockProperties def;
 	def.fromSettings(settings, "diagrameditor/default");
 
+		//Izidoro fork: with no title block chosen in the settings, new
+		//projects and folios use the company one instead of the plain grid
+	if (def.template_name.isEmpty()) {
+		def.template_name = QStringLiteral("Izidoro_A4");
+		def.collection = QET::QetCollection::Common;
+	}
+
 	return(def);
 }
 
