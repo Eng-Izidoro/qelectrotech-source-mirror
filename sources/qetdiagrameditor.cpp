@@ -2442,6 +2442,11 @@ void QETDiagramEditor::setUpRibbon()
 		tabs->addTab(row, page.first);
 	}
 	tabs->setStyleSheet(QStringLiteral(
+		"QTabBar::tab { padding: 5px 16px; border: none;"
+		" background: transparent; color: #3A4A5E; }"
+		"QTabBar::tab:selected { color: #1E4E8C; font-weight: bold;"
+		" border-bottom: 2px solid #1E4E8C; }"
+		"QTabBar::tab:hover { color: #14243A; }"
 		"QToolButton { padding: 2px 4px; min-width: 46px; }"));
 
 	m_ribbon_tool_bar = new QToolBar(tr("Tasks", "toolbar title"), this);
@@ -2451,6 +2456,14 @@ void QETDiagramEditor::setUpRibbon()
 	insertToolBar(main_tool_bar, m_ribbon_tool_bar);
 	insertToolBarBreak(main_tool_bar);
 
+		//Panel titles and splitters in the colours of the Izidoro
+		//interface; the drawing keeps its own colours
+	setStyleSheet(QStringLiteral(
+		"QDockWidget::title { background: #EEF1F5; color: #14243A;"
+		" padding: 5px 8px; border-bottom: 1px solid #D5DCE6; }"
+		"QMainWindow::separator { background: #D5DCE6;"
+		" width: 3px; height: 3px; }"
+		"QMainWindow::separator:hover { background: #1E4E8C; }"));
 }
 
 /**
