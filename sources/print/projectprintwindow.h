@@ -99,6 +99,7 @@ class ProjectPrintWindow : public QMainWindow
 		QList<Diagram *> selectedDiagram() const;
 		void exportToPDF();
 		void setOrientationForDiagram(Diagram *diagram);
+		void setUpMoreOptions();
 		void applyProjectPaperSize();
 		QMap<QByteArray, QString> pdfInformation();
 

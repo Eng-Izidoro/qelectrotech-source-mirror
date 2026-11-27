@@ -47,7 +47,37 @@
 #include <QMap>
 #include <QTimer>
 #include <QVector>
+#include <QDesktopServices>
 #include <QDir>
+#include <QFileInfo>
+#include <QMessageBox>
+#include <QSettings>
+#include <QToolButton>
+#include <QUrl>
+
+/**
+	@brief offerToOpenPdf
+	Tell that @a file was written, and offer to open it or its folder.
+*/
+static void offerToOpenPdf(const QString &file, QWidget *parent)
+{
+	QMessageBox box(QMessageBox::Information,
+			ProjectPrintWindow::tr("PDF generated"),
+			ProjectPrintWindow::tr("The PDF was saved as:\n%1")
+				.arg(QDir::toNativeSeparators(file)),
+			QMessageBox::Close, parent);
+	auto open_pdf = box.addButton(ProjectPrintWindow::tr("Open PDF"),
+				      QMessageBox::AcceptRole);
+	auto open_folder = box.addButton(
+		ProjectPrintWindow::tr("Open folder"), QMessageBox::ActionRole);
+	box.setDefaultButton(open_pdf);
+	box.exec();
+	if (box.clickedButton() == open_pdf)
+		QDesktopServices::openUrl(QUrl::fromLocalFile(file));
+	else if (box.clickedButton() == open_folder)
+		QDesktopServices::openUrl(
+			QUrl::fromLocalFile(QFileInfo(file).absolutePath()));
+}
 
 /**
  * @brief ProjectPrintWindow::ProjectPrintWindow
@@ -178,6 +208,9 @@ ProjectPrintWindow::ProjectPrintWindow(QETProject *project, QPrinter *printer, Q
 	m_preview = new QPrintPreviewWidget(m_printer);
 	connect(m_preview, &QPrintPreviewWidget::paintRequested, this, &ProjectPrintWindow::requestPaint);
 	ui->m_vertical_layout->addWidget(m_preview);
+		//The preview takes the room the page list and options leave
+	ui->m_vertical_layout->setStretch(1, 1);
+	ui->verticalLayout_3->setStretch(0, 1);
 
 	setUpDiagramList();
 
@@ -191,7 +224,10 @@ ProjectPrintWindow::ProjectPrintWindow(QETProject *project, QPrinter *printer, Q
 	else	//export to pdf
 	{
 		setWindowTitle(tr("Export to PDF", "window title"));
-		auto pdf_button = new QPushButton(QET::Icons::PDF, tr("Export in pdf"));
+		auto pdf_button = new QPushButton(QET::Icons::PDF,
+						  tr("Generate PDF"));
+		pdf_button->setStyleSheet(QStringLiteral(
+			"font-weight: bold; padding: 6px 18px;"));
 		ui->m_button_box->addButton(pdf_button, QDialogButtonBox::ActionRole);
 		connect(pdf_button, &QPushButton::clicked, this, &ProjectPrintWindow::exportToPDF);
 	}
@@ -215,6 +251,37 @@ ProjectPrintWindow::ProjectPrintWindow(QETProject *project, QPrinter *printer, Q
 
 	m_backup_diagram_background_color = Diagram::background_color;
 	Diagram::background_color = Qt::white;
+
+	setUpMoreOptions();
+}
+
+/**
+ * @brief ProjectPrintWindow::setUpMoreOptions
+ * Fold the drawing and printing options under one "More options" button,
+ * so the page list and the preview come first. The choice is kept.
+ */
+void ProjectPrintWindow::setUpMoreOptions()
+{
+	auto button = new QToolButton(this);
+	button->setText(tr("More options"));
+	button->setCheckable(true);
+	button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+	button->setAutoRaise(true);
+	ui->verticalLayout_3->insertWidget(1, button);
+
+	auto show_options = [this, button](bool show) {
+		button->setArrowType(show ? Qt::DownArrow : Qt::RightArrow);
+		ui->groupBox->setVisible(show);
+		ui->groupBox_2->setVisible(show);
+	};
+	connect(button, &QToolButton::toggled, this, [show_options](bool show) {
+		show_options(show);
+		QSettings().setValue("print/izidoro/more_options", show);
+	});
+	const bool show =
+		QSettings().value("print/izidoro/more_options", false).toBool();
+	button->setChecked(show);
+	show_options(show);
 }
 
 /**
@@ -646,12 +713,7 @@ void ProjectPrintWindow::setUpDiagramList()
 
 	for (auto diagram : m_project->diagrams())
 	{
-		auto title = diagram->title();
-		if (title.isEmpty()) {
-			title = tr("Untitled sheet");
-		}
-
-		auto checkbox = new QCheckBox(title);
+		auto checkbox = new QCheckBox(folioLabel(m_project, diagram));
 		checkbox->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum));
 		checkbox->setChecked(true);
 		layout->addWidget(checkbox, 0, Qt::AlignLeft | Qt::AlignTop);
@@ -984,7 +1046,9 @@ void ProjectPrintWindow::print()
 				// Last, as an update the steps above would not keep
 			PdfLinks::addOutlineAndInfo(pdfFile, outline, information);
 
+			QWidget *parent = parentWidget();
 			this->close();
+			offerToOpenPdf(pdfFile, parent);
 		});
 	} else {
 		this->close();
