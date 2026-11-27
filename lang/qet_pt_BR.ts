@@ -1252,7 +1252,7 @@ Nota: Estas opções NÃO permitem ou bloqueiam a autonumeração, apenas a sua 
     <message>
         <location filename="../sources/ui/bomexportdialog.ui" line="75"/>
         <source>Terminals with no label, designation, manufacturer or manufacturer reference</source>
-        <translation>Terminais sem legenda, designação, fabricante ou referência do fabricante</translation>
+        <translation type="unfinished">Terminais sem tag, designação, fabricante ou referência do fabricante</translation>
     </message>
     <message>
         <location filename="../sources/ui/bomexportdialog.ui" line="78"/>
@@ -2108,7 +2108,7 @@ Se você confirmar, o outro cabo perderá essas veias. Deseja continuar?</numeru
     <message>
         <location filename="../sources/cablelist/cablelistrows.cpp" line="183"/>
         <source>Label (cable)</source>
-        <translation>Legenda (cabo)</translation>
+        <translation type="unfinished">Tag (cabo)</translation>
     </message>
     <message>
         <location filename="../sources/cablelist/cablelistrows.cpp" line="184"/>
@@ -2123,7 +2123,7 @@ Se você confirmar, o outro cabo perderá essas veias. Deseja continuar?</numeru
     <message>
         <location filename="../sources/cablelist/cablelistrows.cpp" line="186"/>
         <source>Label (start)</source>
-        <translation>Legenda (início)</translation>
+        <translation type="unfinished">Tag (início)</translation>
     </message>
     <message>
         <location filename="../sources/cablelist/cablelistrows.cpp" line="187"/>
@@ -2143,7 +2143,7 @@ Se você confirmar, o outro cabo perderá essas veias. Deseja continuar?</numeru
     <message>
         <location filename="../sources/cablelist/cablelistrows.cpp" line="190"/>
         <source>Label (end)</source>
-        <translation>Legenda (fim)</translation>
+        <translation type="unfinished">Tag (fim)</translation>
     </message>
     <message>
         <location filename="../sources/cablelist/cablelistrows.cpp" line="191"/>
@@ -10229,7 +10229,7 @@ Gravado em %4</translation>
     <message>
         <location filename="../sources/exportpropertieswidget.cpp" line="238"/>
         <source>A symbol&apos;s texts (label, function...) become attributes of its block. LibreCAD does not show attributes.</source>
-        <translation>Os textos de um símbolo (legenda, função...) tornam-se atributos do seu bloco. O LibreCAD não exibe atributos.</translation>
+        <translation type="unfinished">Os textos de um símbolo (tag, função...) tornam-se atributos do seu bloco. O LibreCAD não exibe atributos.</translation>
     </message>
     <message>
         <location filename="../sources/exportpropertieswidget.cpp" line="243"/>
@@ -10620,7 +10620,7 @@ que você cria. Entradas de texto e números
     <message>
         <location filename="../sources/TerminalStrip/ui/freeterminaleditor.ui" line="20"/>
         <source>Filter by label (e.g. Z1)</source>
-        <translation>Filtrar por legenda (ex.: Z1)</translation>
+        <translation type="unfinished">Filtrar por tag (ex.: Z1)</translation>
     </message>
     <message>
         <location filename="../sources/TerminalStrip/ui/freeterminaleditor.ui" line="30"/>
@@ -10749,7 +10749,7 @@ que você cria. Entradas de texto e números
     <message>
         <location filename="../sources/TerminalStrip/ui/freeterminalmodel.cpp" line="228"/>
         <source>Label</source>
-        <translation>Legenda</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/TerminalStrip/ui/freeterminalmodel.cpp" line="229"/>
@@ -12496,7 +12496,7 @@ Qualquer valor diferente de ‘Sem arredondamento’ pode causar erros na render
     <message>
         <location filename="../sources/genericdevice/genericdevicewizard.cpp" line="681"/>
         <source>Label:</source>
-        <translation>Legenda:</translation>
+        <translation type="unfinished">Tag:</translation>
     </message>
     <message>
         <location filename="../sources/genericdevice/genericdevicewizard.cpp" line="682"/>
@@ -13925,7 +13925,7 @@ Coloque-as primeiro em uma única régua de terminais.</translation>
         <location filename="../sources/ui/linksingleelementwidget.cpp" line="611"/>
         <location filename="../sources/ui/linksingleelementwidget.cpp" line="619"/>
         <source>Label</source>
-        <translation>Legenda</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/ui/linksingleelementwidget.cpp" line="612"/>
@@ -14152,7 +14152,7 @@ Esta configuração fica em Configurar QElectroTech &gt; Geral &gt; Projetos.</t
     <message>
         <location filename="../sources/ui/macrolabelsdialog.cpp" line="48"/>
         <source>Label</source>
-        <translation>Rótulo</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/ui/macrolabelsdialog.cpp" line="49"/>
@@ -16017,7 +16017,7 @@ Importá-las? Os elementos receberão então os próximos números, a partir de 
     <message>
         <location filename="../sources/ui/placelabelpartdialog.cpp" line="219"/>
         <source>Label</source>
-        <translation>Rótulo</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/ui/placelabelpartdialog.cpp" line="235"/>
@@ -16254,7 +16254,7 @@ Importá-las? Os elementos receberão então os próximos números, a partir de 
     <message>
         <location filename="../sources/ui/plclinkwidget.cpp" line="73"/>
         <source>Label</source>
-        <translation>Legenda</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/ui/plclinkwidget.cpp" line="73"/>
@@ -25393,12 +25393,12 @@ Deseja substituí-lo?</translation>
     <message>
         <location filename="../sources/qetinformation.cpp" line="414"/>
         <source>Label formula</source>
-        <translation>Fórmula da legenda</translation>
+        <translation type="unfinished">Fórmula da tag</translation>
     </message>
     <message>
         <location filename="../sources/qetinformation.cpp" line="415"/>
         <source>Label</source>
-        <translation>Legenda</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/editor/graphicspart/partplctable.cpp" line="189"/>
@@ -33534,7 +33534,7 @@ Clique duas vezes para ir ao elemento</translation>
     <message>
         <location filename="../sources/TerminalStrip/ui/terminalstripmodel.cpp" line="501"/>
         <source>Label</source>
-        <translation>Legenda</translation>
+        <translation type="unfinished">Tag</translation>
     </message>
     <message>
         <location filename="../sources/TerminalStrip/ui/terminalstripmodel.cpp" line="503"/>
