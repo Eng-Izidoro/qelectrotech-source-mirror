@@ -1041,6 +1041,8 @@ set(QET_SRC_FILES
   ${QET_DIR}/sources/ui/potentialtypeswidget.h
   ${QET_DIR}/sources/ui/componentpalettewidget.cpp
   ${QET_DIR}/sources/ui/componentpalettewidget.h
+  ${QET_DIR}/sources/autopages/autopages.cpp
+  ${QET_DIR}/sources/autopages/autopages.h
   ${QET_DIR}/sources/ui/projectdatadialog.cpp
   ${QET_DIR}/sources/ui/projectdatadialog.h
   ${QET_DIR}/sources/ui/projectpropertiesdialog.cpp
