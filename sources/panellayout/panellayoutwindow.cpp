@@ -399,7 +399,14 @@ void PanelLayoutWindow::setUpUi()
 				     this, &PanelLayoutWindow::apply);
 	toolbar->addAction(QET::Icons::TableOfContent, tr("Generate pages"),
 			   this, &PanelLayoutWindow::generatePages);
-
+	toolbar->addSeparator();
+	toolbar->addAction(QET::Icons::DocumentImport, tr("Catalogue"), this,
+			   [this]() {
+		ComponentDrawings::openCatalogue(this);
+			//Sizes and drawings may have changed there
+		refreshComponents();
+		refreshAll();
+	});
 
 		//Left: the components of the schematic
 	auto *left = new QWidget(this);

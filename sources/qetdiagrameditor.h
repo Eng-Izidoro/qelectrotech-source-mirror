@@ -340,6 +340,7 @@ class QETDiagramEditor : public QETMainWindow
 		*m_project_data = nullptr,	///< Type the title block data of the current project once
 		*m_generate_auto_pages = nullptr, ///< Make the automatic pages
 		*m_panel_layout = nullptr, ///< Open the panel layout window
+		*m_component_catalogue = nullptr, ///< Parts and their drawings
 		*m_project_history,	///< The saves the current project's .qetdb keeps
 		*m_export_delivery,	///< A copy of the current .qetdb without its history
 		*m_project_add_diagram,		///< Add a diagram to the current project.

@@ -86,6 +86,7 @@
 #include "qetgraphicsitem/independenttextitem.h"
 #include "QPropertyUndoCommand/qpropertyundocommand.h"
 #include "autopages/autopages.h"
+#include "panellayout/componentdrawings.h"
 #include "panellayout/panellayoutwindow.h"
 #include "ui/componentpalettewidget.h"
 #include "ui/projectdatadialog.h"
@@ -1488,6 +1489,19 @@ void QETDiagramEditor::setUpActions()
 		PanelLayoutWindow::open(currentProject(), this);
 	});
 
+		//Izidoro fork: parts by manufacturer, with their drawing
+	m_component_catalogue = new QAction(QET::Icons::DocumentImport,
+					    tr("Component catalogue..."), this);
+	ShortcutManager::instance().registerAction(
+		m_component_catalogue, "diagrameditor.component_catalogue",
+		tr("Diagram editors"), QKeySequence());
+	m_component_catalogue->setStatusTip(tr(
+		"Parts by manufacturer and reference, with their size and front"
+		" drawing", "status bar tip"));
+	connect(m_component_catalogue, &QAction::triggered, this, [this]() {
+		ComponentDrawings::openCatalogue(this);
+	});
+
 		//Add a nomenclature item
 	m_add_nomenclature = new QAction(QET::Icons::TableOfContent, tr("Add a nomenclature"), this);
 	ShortcutManager::instance().registerAction(m_add_nomenclature, "diagrameditor.add_nomenclature", tr("Diagram editors"), QKeySequence());
@@ -2380,6 +2394,7 @@ void QETDiagramEditor::setUpRibbon()
 		{"diagrameditor.project_data", tr("Project data")},
 		{"diagrameditor.generate_auto_pages", tr("Automatic pages")},
 		{"diagrameditor.panel_layout", tr("Panel layout")},
+		{"diagrameditor.component_catalogue", tr("Catalogue")},
 		{"diagrameditor.project_edit_properties", tr("Properties")},
 		{"diagrameditor.check_project", tr("Check")},
 		{"diagrameditor.export_wiring_list", tr("Wiring list")},
@@ -2450,6 +2465,7 @@ void QETDiagramEditor::setUpRibbon()
 			 "diagrameditor.project_data",
 			 "diagrameditor.generate_auto_pages",
 			 "diagrameditor.panel_layout",
+			 "diagrameditor.component_catalogue",
 			 "diagrameditor.project_edit_properties",
 			 sep,
 			 "diagrameditor.check_project",
@@ -2758,6 +2774,7 @@ void QETDiagramEditor::setUpMenu()
 	menu_project -> addAction(m_project_data);
 	menu_project -> addAction(m_generate_auto_pages);
 	menu_project -> addAction(m_panel_layout);
+	menu_project -> addAction(m_component_catalogue);
 	menu_project -> addAction(m_project_edit_properties);
 	menu_project -> addAction(m_project_history);
 	menu_project -> addAction(m_auto_conductor);
