@@ -1043,6 +1043,10 @@ set(QET_SRC_FILES
   ${QET_DIR}/sources/ui/componentpalettewidget.h
   ${QET_DIR}/sources/autopages/autopages.cpp
   ${QET_DIR}/sources/autopages/autopages.h
+  ${QET_DIR}/sources/panellayout/panellayout.cpp
+  ${QET_DIR}/sources/panellayout/panellayout.h
+  ${QET_DIR}/sources/undocommand/changepanellayoutcommand.cpp
+  ${QET_DIR}/sources/undocommand/changepanellayoutcommand.h
   ${QET_DIR}/sources/ui/projectdatadialog.cpp
   ${QET_DIR}/sources/ui/projectdatadialog.h
   ${QET_DIR}/sources/ui/projectpropertiesdialog.cpp

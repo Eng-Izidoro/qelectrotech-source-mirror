@@ -3012,6 +3012,7 @@ QDomDocument QETProject::toXml(QHash<int, QByteArray> *kept_folios, QStringList 
 
 	// local, non-transmitted usage tracking (time spent on this project)
 	writeUsageXml(project_root);
+	writePanelLayoutXml(project_root);
 	writeWireHopsXml(project_root);
 	writeAutoConductorXml(project_root);
 	writeSymbolTextsXml(project_root);
@@ -4259,6 +4260,7 @@ void QETProject::readProjectXml(QDomDocument &xml_project)
 
 		//Load the local, non-transmitted usage tracking
 	readUsageXml(xml_project);
+	readPanelLayoutXml(xml_project);
 	readWireHopsXml(xml_project);
 	readAutoConductorXml(xml_project);
 	readSymbolTextsXml(xml_project);
@@ -4859,6 +4861,28 @@ void QETProject::readUsageXml(QDomDocument &xml_project)
 }
 
 /**
+	@brief QETProject::readPanelLayoutXml
+	Read the <panel_layouts> element of the project, if any.
+	@param xml_project : the xml description of the project
+*/
+void QETProject::readPanelLayoutXml(QDomDocument &xml_project)
+{
+	m_panel_layout = PanelLayout::fromXml(xml_project.documentElement());
+}
+
+/**
+	@brief QETProject::setPanelLayout
+	Use @p layout as where the parts sit in the panels. Undoable through
+	ChangePanelLayoutCommand, which calls this.
+*/
+void QETProject::setPanelLayout(const PanelLayout &layout)
+{
+	if (m_panel_layout == layout) return;
+	m_panel_layout = layout;
+	emit panelLayoutChanged();
+}
+
+/**
 	@brief QETProject::readWireHopsXml
 	Read the <wire_crossings> element of the project, if any.
 	A project without it draws no hop.
@@ -5322,6 +5346,16 @@ void QETProject::writeProjectPropertiesXml(QDomElement &xml_element) {
 */
 void QETProject::writeUsageXml(QDomElement &xml_element) {
 	m_project_properties_handler.usageTracker().toXml(xml_element);
+}
+
+/**
+	@brief QETProject::writePanelLayoutXml
+	Export the panel layout as a <panel_layouts> child of \a xml_element;
+	nothing when the project has no panel.
+*/
+void QETProject::writePanelLayoutXml(QDomElement &xml_element)
+{
+	m_panel_layout.toXml(xml_element);
 }
 
 /**

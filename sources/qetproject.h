@@ -35,6 +35,7 @@
 #include "titleblock/templatescollection.h"
 #include "titleblockproperties.h"
 #include "wirehops.h"
+#include "panellayout/panellayout.h"
 #include "wiringrules.h"
 #include "diagram.h"
 #include <QPointer>
@@ -344,6 +345,9 @@ class QETProject : public QObject
 		bool autoFolio () const;
 		void setAutoConductor (bool ac);
 		WireHops::Mode wireHops() const;
+			///Izidoro fork: where the parts sit in the panels
+		const PanelLayout &panelLayout() const {return m_panel_layout;}
+		void setPanelLayout(const PanelLayout &layout);
 		void setWireHops(WireHops::Mode mode);
 		bool uprightSymbolTexts() const;
 		void setUprightSymbolTexts(bool upright);
@@ -518,6 +522,7 @@ class QETProject : public QObject
 		void reportPropertiesChanged(const QString &old_str, const QString &new_str);
 		void XRefPropertiesChanged ();
 		void addAutoNumDiagram();
+		void panelLayoutChanged();
 		void elementAutoNumAdded(QString name);
 		void elementAutoNumRemoved(QString name);
 		void conductorAutoNumAdded();
@@ -585,6 +590,7 @@ class QETProject : public QObject
 		void readCableXml(const QDomDocument &xml_project);
 		void readBridgeXml(const QDomDocument &xml_project);
 		void readUsageXml(QDomDocument &xml_project);
+		void readPanelLayoutXml(QDomDocument &xml_project);
 		void readWireHopsXml(QDomDocument &xml_project);
 		void readAutoConductorXml(QDomDocument &xml_project);
 		void readOriginXml(QDomDocument& xml_project);
@@ -610,6 +616,7 @@ class QETProject : public QObject
 									  QDomElement &xml_element);
 	private:
 		void writeUsageXml(QDomElement &);
+		void writePanelLayoutXml(QDomElement &);
 		void writeWireHopsXml(QDomElement &);
 		void writeAutoConductorXml(QDomElement &);
 		void writeOriginXml(QDomElement&);
@@ -740,6 +747,7 @@ class QETProject : public QObject
 		QByteArray m_opened_content;
 		bool m_auto_conductor = true;
 		WireHops::Mode m_wire_hops = WireHops::Mode::None;
+		PanelLayout m_panel_layout;
 		ProjectOrigin::Mode m_origin = ProjectOrigin::Mode::TopLeft;
 			/// Texts drawn in a turned symbol stay horizontal (on for a new
 			/// project, off for one saved without it), see uprightSymbolTexts()
