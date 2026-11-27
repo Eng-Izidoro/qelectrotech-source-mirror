@@ -20,6 +20,7 @@
 
 #include <QDateTime>
 #include <QMap>
+#include <QPair>
 #include <QPointF>
 #include <QRectF>
 #include <QString>
@@ -119,6 +120,18 @@ namespace PdfLinks {
 	*/
 	void convertComponentInfoAnnotations(const QString &pdfPath,
 										const QList<ComponentInfo> &annotations);
+
+	/**
+		Append to a Qt-generated PDF file, as an incremental update, the
+		bookmarks a reader lists beside the pages, and set entries of its
+		document information (keys such as "Title", "Author", "Subject").
+		@p outline holds the label of each bookmark and the 1-based page it
+		opens, in reading order. The reader opens with its bookmark panel
+		shown. Does nothing if the file is not as Qt writes it.
+	*/
+	void addOutlineAndInfo(const QString &pdfPath,
+						   const QList<QPair<QString, int>> &outline,
+						   const QMap<QByteArray, QString> &info);
 
 }
 

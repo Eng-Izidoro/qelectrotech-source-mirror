@@ -47,6 +47,7 @@
 #include <QMap>
 #include <QTimer>
 #include <QVector>
+#include <QDir>
 
 /**
  * @brief ProjectPrintWindow::ProjectPrintWindow
@@ -77,7 +78,8 @@ void ProjectPrintWindow::launchDialog(QETProject *project, QPrinter::OutputForma
 	else //To pdf file
 	{
 		auto dir_path = project->currentDir();
-		QString file_name = QDir::toNativeSeparators(QDir::cleanPath(dir_path + "/" + printer_->docName()));
+		QString file_name = QDir::toNativeSeparators(QDir::cleanPath(
+			dir_path + "/" + ProjectPrintWindow::pdfFileName(project)));
 		if (!file_name.endsWith(".pdf")) {
 			file_name.append(".pdf");
 		}
@@ -108,6 +110,54 @@ QString ProjectPrintWindow::docName(QETProject *project)
 }
 
 /**
+ * @brief ProjectPrintWindow::pdfFileName
+ * The name of the PDF file of @project, without folder or extension, from
+ * its project data: "work order - customer - project - Rev revision",
+ * leaving out the empty ones. Without any of them, docName().
+ * @param project
+ * @return
+ */
+QString ProjectPrintWindow::pdfFileName(QETProject *project)
+{
+	const DiagramContext data = project->projectProperties();
+	const QString work_order = data.value("os").toString().trimmed();
+	const QString customer = data.value("cliente").toString().trimmed();
+	QString revision = data.value("revisao").toString().trimmed();
+	if (!revision.isEmpty()
+		&& !revision.startsWith(QLatin1String("rev"), Qt::CaseInsensitive))
+		revision = tr("Rev %1", "revision in a PDF file name").arg(revision);
+
+	QStringList parts;
+	for (const QString &part : {work_order, customer,
+				    project->title().trimmed(), revision})
+		if (!part.isEmpty()) parts << part;
+	if (parts.isEmpty())
+		return docName(project);
+
+	QString name = parts.join(QStringLiteral(" - "));
+	for (const QChar c : QET::forbiddenCharacters())
+		name.replace(c, QLatin1Char('-'));
+	return name;
+}
+
+/**
+ * @brief ProjectPrintWindow::folioLabel
+ * @return "01 - title" for @diagram of @project, as the Projects panel
+ * shows it
+ */
+QString ProjectPrintWindow::folioLabel(QETProject *project, Diagram *diagram)
+{
+	const int width = qMax(2, QString::number(
+		project->diagrams().count()).size());
+	QString title = diagram->title();
+	if (title.isEmpty())
+		title = tr("Untitled sheet");
+	return QStringLiteral("%1 - %2")
+		.arg(project->folioIndex(diagram) + 1, width, 10, QLatin1Char('0'))
+		.arg(title);
+}
+
+/**
  * @brief ProjectPrintWindow::ProjectPrintWindow
  * Constructor, don't use this class directly, instead use ProjectPrintWindow::launchDialog static function.
  * @param project
@@ -123,6 +173,7 @@ ProjectPrintWindow::ProjectPrintWindow(QETProject *project, QPrinter *printer, Q
 	ui->setupUi(this);
 
 	loadPageSetupForCurrentPrinter();
+	applyProjectPaperSize();
 
 	m_preview = new QPrintPreviewWidget(m_printer);
 	connect(m_preview, &QPrintPreviewWidget::paintRequested, this, &ProjectPrintWindow::requestPaint);
@@ -164,6 +215,46 @@ ProjectPrintWindow::ProjectPrintWindow(QETProject *project, QPrinter *printer, Q
 
 	m_backup_diagram_background_color = Diagram::background_color;
 	Diagram::background_color = Qt::white;
+}
+
+/**
+ * @brief ProjectPrintWindow::applyProjectPaperSize
+ * For a PDF, use the paper of the project data (A4 or A3) when it is
+ * set, instead of the one of the last export.
+ */
+void ProjectPrintWindow::applyProjectPaperSize()
+{
+	if (m_printer->outputFormat() != QPrinter::PdfFormat)
+		return;
+	const QString paper = m_project->projectProperties()
+		.value("papel").toString().trimmed().toUpper();
+	if (paper == QLatin1String("A4"))
+		m_printer->setPageSize(QPageSize(QPageSize::A4));
+	else if (paper == QLatin1String("A3"))
+		m_printer->setPageSize(QPageSize(QPageSize::A3));
+}
+
+/**
+ * @brief ProjectPrintWindow::pdfInformation
+ * @return the title, author and subject written in the PDF file
+ */
+QMap<QByteArray, QString> ProjectPrintWindow::pdfInformation()
+{
+	const DiagramContext data = m_project->projectProperties();
+	QStringList subject;
+	const QString customer = data.value("cliente").toString().trimmed();
+	const QString work_order = data.value("os").toString().trimmed();
+	if (!customer.isEmpty())
+		subject << customer;
+	if (!work_order.isEmpty())
+		subject << tr("WO %1", "work order in the PDF subject")
+			   .arg(work_order);
+
+	QMap<QByteArray, QString> information;
+	information.insert("Title", m_project->title().trimmed());
+	information.insert("Author", QStringLiteral("Izidoro"));
+	information.insert("Subject", subject.join(QStringLiteral(" - ")));
+	return information;
 }
 
 /**
@@ -222,6 +313,13 @@ void ProjectPrintWindow::requestPaint()
 	const auto diagrams = selectedDiagram();
 	if (per_folio_orientation && !diagrams.isEmpty()) {
 		setOrientationForDiagram(diagrams.first());
+	}
+
+	if (m_printing) {
+		m_outline.clear();
+		for (auto diagram : diagrams)
+			m_outline.append({folioLabel(m_project, diagram),
+					  diagramPageMap.value(diagram)});
 	}
 
 	bool first = true;
@@ -870,7 +968,9 @@ void ProjectPrintWindow::print()
 		// compositing the backing store before the window is destroyed,
 		// which prevents the black screen observed on Apple Silicon under
 		// macOS Sequoia (QPrintPreviewWidget + CALayer timing issue).
-		QTimer::singleShot(0, this, [this, pdfFile]() {
+		const QList<QPair<QString, int>> outline = m_outline;
+		const QMap<QByteArray, QString> information = pdfInformation();
+		QTimer::singleShot(0, this, [this, pdfFile, outline, information]() {
 			// Convert component-info link annotations into invisible text annotations
 			if (ui->m_component_info_cb->isChecked() && !m_componentInfoList.isEmpty()) {
 				PdfLinks::convertComponentInfoAnnotations(pdfFile, m_componentInfoList);
@@ -881,6 +981,8 @@ void ProjectPrintWindow::print()
 			// actions so cross-references jump inside the document.
 			PdfLinks::convertUriToGoTo(pdfFile);
 			PdfLinks::removeUnusedPdfxNamespace(pdfFile);
+				// Last, as an update the steps above would not keep
+			PdfLinks::addOutlineAndInfo(pdfFile, outline, information);
 
 			this->close();
 		});

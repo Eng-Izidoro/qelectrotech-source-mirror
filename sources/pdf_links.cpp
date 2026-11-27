@@ -897,4 +897,173 @@ void convertComponentInfoAnnotations(const QString &pdfPath,
 	outF.close();
 }
 
+/// @p text as a PDF text string: UTF-16BE with its byte-order mark, in
+/// hexadecimal, so accents and parentheses need no escaping
+static QByteArray pdfTextString(const QString &text)
+{
+	QByteArray hex = "<FEFF";
+	for (const QChar c : text)
+		hex += QByteArray::number(c.unicode(), 16)
+				   .rightJustified(4, '0').toUpper();
+	return hex + ">";
+}
+
+/// The content of the dictionary of the last object @p number in @p data,
+/// without its outer << >>, or an empty array if it is not found
+static QByteArray objectDictionary(const QByteArray &data, int number)
+{
+	const QByteArray head = "\n" + QByteArray::number(number) + " 0 obj";
+	const int start = data.lastIndexOf(head);
+	if (start == -1)
+		return QByteArray();
+	const int end = data.indexOf("endobj", start);
+	const int open = data.indexOf("<<", start);
+	if (end == -1 || open == -1 || open > end)
+		return QByteArray();
+	const int close = data.lastIndexOf(">>", end);
+	if (close <= open)
+		return QByteArray();
+	return data.mid(open + 2, close - open - 2);
+}
+
+void addOutlineAndInfo(const QString &pdfPath,
+					   const QList<QPair<QString, int>> &outline,
+					   const QMap<QByteArray, QString> &info)
+{
+	QFile f(pdfPath);
+	if (!f.open(QIODevice::ReadOnly)) return;
+	QByteArray data = f.readAll();
+	f.close();
+
+		// The last trailer gives the catalog, the information and the size
+	const int trailer_pos = data.lastIndexOf("trailer");
+	const int startxref_pos = data.lastIndexOf("startxref");
+	if (trailer_pos == -1 || startxref_pos < trailer_pos) return;
+	const QString trailer = QString::fromLatin1(
+		data.mid(trailer_pos, startxref_pos - trailer_pos));
+	const QString tail = QString::fromLatin1(data.mid(startxref_pos));
+
+	auto capture = [](const QString &text, const QString &pattern) {
+		const auto match = QRegularExpression(pattern).match(text);
+		return match.hasMatch() ? match.captured(1) : QString();
+	};
+	const int root = capture(trailer, "/Root\\s+(\\d+)\\s+0\\s+R").toInt();
+	const int info_obj =
+		capture(trailer, "/Info\\s+(\\d+)\\s+0\\s+R").toInt();
+	const int size = capture(trailer, "/Size\\s+(\\d+)").toInt();
+	const QString prev = capture(tail, "startxref\\s+(\\d+)");
+	const QString id = capture(trailer, "(/ID\\s*\\[[^\\]]*\\])");
+	if (root <= 0 || size <= 0 || prev.isEmpty()) return;
+
+		// The page objects in reading order, from the page tree
+	QVector<int> pages;
+	{
+		const int pages_pos = data.indexOf("/Type /Pages");
+		const int kids = pages_pos == -1 ? -1
+										 : data.indexOf("/Kids", pages_pos);
+		const int lb = kids == -1 ? -1 : data.indexOf('[', kids);
+		const int rb = lb == -1 ? -1 : data.indexOf(']', lb);
+		if (lb == -1 || rb == -1) return;
+		QRegularExpression re(QStringLiteral("(\\d+)\\s+\\d+\\s+R"));
+		auto it = re.globalMatch(
+			QString::fromLatin1(data.mid(lb + 1, rb - lb - 1)));
+		while (it.hasNext())
+			pages.append(it.next().captured(1).toInt());
+	}
+
+	QString catalog_text =
+		QString::fromLatin1(objectDictionary(data, root));
+	if (catalog_text.isEmpty()) return;
+	catalog_text.remove(QRegularExpression(QStringLiteral(
+		"/(Outlines\\s+\\d+\\s+\\d+\\s+R|PageMode\\s*/\\w+)")));
+	QByteArray catalog = catalog_text.toLatin1();
+
+	QString info_text = info_obj > 0
+		? QString::fromLatin1(objectDictionary(data, info_obj))
+		: QString();
+	QByteArray information;
+	for (auto it = info.cbegin(); it != info.cend(); ++it)
+		if (!it.value().isEmpty())
+			info_text.remove(QRegularExpression(
+				"/" + QString::fromLatin1(it.key())
+				+ "\\s*(<[^>]*>|\\((?:[^()\\\\]|\\\\.)*\\))"));
+	information = info_text.toLatin1();
+	for (auto it = info.cbegin(); it != info.cend(); ++it)
+		if (!it.value().isEmpty())
+			information += "\n/" + it.key() + " "
+						   + pdfTextString(it.value());
+
+		// Objects of the update: number -> dictionary content
+	QMap<int, QByteArray> objects;
+	int next = size;
+	QList<QPair<QString, int>> entries;
+	for (const auto &entry : outline)
+		if (entry.second >= 1 && entry.second <= pages.size())
+			entries.append(entry);
+	if (!entries.isEmpty())
+	{
+		const int outline_root = next++;
+		const int first = next;
+		const int last = first + entries.size() - 1;
+		for (int i = 0; i < entries.size(); ++i)
+		{
+			QByteArray item = "/Title " + pdfTextString(entries.at(i).first)
+				+ " /Parent " + QByteArray::number(outline_root) + " 0 R";
+			if (i > 0)
+				item += " /Prev " + QByteArray::number(first + i - 1)
+						+ " 0 R";
+			if (i < entries.size() - 1)
+				item += " /Next " + QByteArray::number(first + i + 1)
+						+ " 0 R";
+			item += " /Dest ["
+				+ QByteArray::number(pages.at(entries.at(i).second - 1))
+				+ " 0 R /Fit]";
+			objects.insert(next++, item);
+		}
+		objects.insert(outline_root, "/Type /Outlines /First "
+			+ QByteArray::number(first) + " 0 R /Last "
+			+ QByteArray::number(last) + " 0 R /Count "
+			+ QByteArray::number(entries.size()));
+		catalog += "\n/Outlines " + QByteArray::number(outline_root)
+				   + " 0 R\n/PageMode /UseOutlines";
+		objects.insert(root, catalog);
+	}
+	int info_number = info_obj;
+	if (!info.isEmpty())
+	{
+		if (info_number <= 0) info_number = next++;
+		objects.insert(info_number, information);
+	}
+	if (objects.isEmpty()) return;
+
+	QByteArray update;
+	if (!data.endsWith('\n')) update += '\n';
+	QMap<int, qint64> offsets;
+	for (auto it = objects.cbegin(); it != objects.cend(); ++it)
+	{
+		offsets.insert(it.key(), data.size() + update.size());
+		update += QByteArray::number(it.key()) + " 0 obj\n<<"
+			+ it.value() + "\n>>\nendobj\n";
+	}
+	const qint64 xref_offset = data.size() + update.size();
+	update += "xref\n";
+	for (auto it = offsets.cbegin(); it != offsets.cend(); ++it)
+		update += QByteArray::number(it.key()) + " 1\n"
+			+ QByteArray::number(it.value()).rightJustified(10, '0')
+			+ " 00000 n \n";
+	update += "trailer\n<< /Size " + QByteArray::number(next)
+		+ " /Root " + QByteArray::number(root) + " 0 R";
+	if (info_number > 0)
+		update += " /Info " + QByteArray::number(info_number) + " 0 R";
+	if (!id.isEmpty())
+		update += " " + id.toLatin1();
+	update += " /Prev " + prev.toLatin1() + " >>\nstartxref\n"
+		+ QByteArray::number(xref_offset) + "\n%%EOF\n";
+
+	QFile out(pdfPath);
+	if (!out.open(QIODevice::Append)) return;
+	out.write(update);
+	out.close();
+}
+
 } // namespace PdfLinks

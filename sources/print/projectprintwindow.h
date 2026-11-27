@@ -47,6 +47,8 @@ class ProjectPrintWindow : public QMainWindow
 	public:
 		static void launchDialog(QETProject *project, QPrinter::OutputFormat format = QPrinter::NativeFormat, QWidget *parent = nullptr);
 		static QString docName(QETProject *project);
+		static QString pdfFileName(QETProject *project);
+		static QString folioLabel(QETProject *project, Diagram *diagram);
 
 		explicit ProjectPrintWindow(QETProject *project, QPrinter *printer, QWidget *parent = nullptr);
 		~ProjectPrintWindow();
@@ -97,6 +99,8 @@ class ProjectPrintWindow : public QMainWindow
 		QList<Diagram *> selectedDiagram() const;
 		void exportToPDF();
 		void setOrientationForDiagram(Diagram *diagram);
+		void applyProjectPaperSize();
+		QMap<QByteArray, QString> pdfInformation();
 
 
 	private:
@@ -108,6 +112,8 @@ class ProjectPrintWindow : public QMainWindow
 		QHash<Diagram *, QCheckBox *> m_diagram_list_hash;
 		QList<PdfLinks::ComponentInfo> m_componentInfoList;
 		bool m_printing = false;
+			///label and first page of each folio in the last PDF export
+		QList<QPair<QString, int>> m_outline;
 };
 
 #endif // PROJECTPRINTWINDOW_H
