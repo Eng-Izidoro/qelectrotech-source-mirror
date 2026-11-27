@@ -27,7 +27,9 @@
 #include "../qetinformation.h"
 #include "../qetproject.h"
 #include "../undocommand/changeelementinformationcommand.h"
+#include "componentdrawings.h"
 
+#include <QFileInfo>
 #include <QMap>
 #include <QRegularExpression>
 #include <QUndoStack>
@@ -97,6 +99,14 @@ QList<PanelComponents::Component> PanelComponents::collect(
 				if (device.location.isEmpty())
 					device.location = folio_location;
 			}
+			if (device.drawing.isEmpty())
+			{
+				const QString svg = ComponentDrawings::drawingPath(
+					text(info, QETInformation::ELMT_MANUFACTURER),
+					text(info, QETInformation::ELMT_MANUFACTURER_REF));
+				if (!svg.isEmpty() && QFileInfo::exists(svg))
+					device.drawing = svg;
+			}
 			const QSizeF size(
 				millimetres(text(info, QETInformation::ELMT_WIDTH)),
 				millimetres(text(info, QETInformation::ELMT_HEIGHT)));
@@ -106,6 +116,12 @@ QList<PanelComponents::Component> PanelComponents::collect(
 				device.size = size;
 		}
 	}
+
+		//No size in the part data: the one of its drawing
+	for (Component &device : devices)
+		if ((!device.size.isValid() || device.size.isEmpty())
+			&& !device.drawing.isEmpty())
+			device.size = ComponentDrawings::size(device.drawing);
 
 	QList<Component> components = devices.values();
 	for (TerminalStrip *strip : project->terminalStrip())

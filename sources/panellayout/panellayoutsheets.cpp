@@ -20,11 +20,13 @@
 #include "../autopages/autopages.h"
 #include "../diagram.h"
 #include "../qetapp.h"
+#include "../qetgraphicsitem/diagramimageitem.h"
 #include "../qetgraphicsitem/independenttextitem.h"
 #include "../qetgraphicsitem/qetshapeitem.h"
 #include "../qetproject.h"
 #include "../undocommand/addgraphicsobjectcommand.h"
 #include "../undocommand/removediagramcommand.h"
+#include "componentdrawings.h"
 
 #include <QPen>
 #include <QUndoStack>
@@ -74,6 +76,25 @@ namespace {
 		push(diagram, item, pos);
 	}
 
+		/// The drawing @p svg of a part, filling @p rect, as a picture.
+		/// @p paper_mm is how many mm of paper a mm of the part takes:
+		/// its lines print 0.2 mm thick, at about 400 dpi.
+	void addDrawing(Diagram *diagram, const QString &svg, const QRectF &rect,
+			const QSizeF &mm, qreal paper_mm)
+	{
+		const qreal ratio = paper_mm > 0 ? paper_mm : 0.25;
+		const QImage image = ComponentDrawings::image(
+			svg, mm, qBound(3.0, 16 * ratio, 12.0),
+			qBound(0.2, 0.2 / ratio, 3.0));
+		if (image.isNull()) return;
+		auto *item = new DiagramImageItem(QPixmap::fromImage(image));
+		item->setScaleFactorX(rect.width() / image.width());
+		item->setScaleFactorY(rect.height() / image.height());
+			//The picture is scaled round its centre
+		const QRectF shown = item->mapRectToParent(item->imageRect());
+		push(diagram, item, rect.topLeft() - shown.topLeft());
+	}
+
 		/// A dimension line from @p from to @p to, its value in mm
 	void addDimension(Diagram *diagram, const QPointF &from,
 			  const QPointF &to, qreal millimetres, bool vertical)
@@ -119,6 +140,16 @@ namespace {
 		};
 		const QRectF outline = map(QRectF(QPointF(0, 0), size));
 
+			//The scale this folio prints at, on the paper of the project
+		const QString paper = project->projectProperties()
+			.value(QStringLiteral("papel")).toString().trimmed()
+			.toUpper();
+		const qreal paper_width = paper == QLatin1String("A3") ? 420
+					: paper == QLatin1String("A2") ? 594 : 297;
+		const qreal sheet_width = diagram->border_and_titleblock
+			.borderAndTitleBlockRect().width();
+		const qreal paper_mm = scale * paper_width / sheet_width;
+
 			//Ducts and rails under the parts
 		for (const PanelLayout::Item &item : panel.items(face))
 		{
@@ -140,10 +171,20 @@ namespace {
 			const bool known = part != parts.constEnd();
 			const QRectF rect =
 				map(PanelLayoutSheets::itemRect(item, parts));
+			const QString tag = known ? part->tag : QStringLiteral("?");
+			if (known && !part->drawing.isEmpty())
+			{
+					//The front view, its tag over it
+				addDrawing(diagram, part->drawing, rect,
+					   PanelLayoutSheets::itemRect(item, parts).size(),
+					   paper_mm);
+				addText(diagram, tag,
+					QPointF(rect.center().x(), rect.top() - 6), 6.5);
+				continue;
+			}
 			QPen pen(Qt::black, 1.2);
 			if (!known) pen.setStyle(Qt::DashLine);
 			addRect(diagram, rect, pen, QBrush(Qt::white));
-			const QString tag = known ? part->tag : QStringLiteral("?");
 			const qreal points = qBound(
 				4.0, qMin(rect.height() * 0.35,
 					  rect.width() / qMax(1, int(tag.size())) * 1.4),
@@ -163,15 +204,6 @@ namespace {
 			     outline.bottomLeft() - QPointF(18, 0),
 			     size.height(), true);
 
-			//The scale this folio prints at, on the paper of the project
-		const QString paper = project->projectProperties()
-			.value(QStringLiteral("papel")).toString().trimmed()
-			.toUpper();
-		const qreal paper_width = paper == QLatin1String("A3") ? 420
-					: paper == QLatin1String("A2") ? 594 : 297;
-		const qreal sheet_width = diagram->border_and_titleblock
-			.borderAndTitleBlockRect().width();
-		const qreal paper_mm = scale * paper_width / sheet_width;
 		if (paper_mm > 0)
 		{
 			const QString note = PanelLayoutSheets::tr(

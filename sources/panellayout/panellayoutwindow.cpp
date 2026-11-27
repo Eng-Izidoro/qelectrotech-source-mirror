@@ -20,6 +20,7 @@
 #include "../qeticons.h"
 #include "../qetproject.h"
 #include "../undocommand/changepanellayoutcommand.h"
+#include "componentdrawings.h"
 #include "panellayoutsheets.h"
 
 #include <QAction>
@@ -130,10 +131,11 @@ namespace {
 		public:
 			LayoutGraphic(PanelLayoutWindow *window, int index,
 				      PanelLayout::Item::Kind kind, const QRectF &rect,
-				      const QString &tag, bool sized) :
+				      const QString &tag, bool sized,
+				      const QString &drawing = QString()) :
 				QGraphicsRectItem(0, 0, rect.width(), rect.height()),
 				m_window(window), m_index(index), m_kind(kind),
-				m_tag(tag), m_sized(sized)
+				m_tag(tag), m_sized(sized), m_drawing(drawing)
 			{
 				setPos(rect.topLeft());
 				setFlags(ItemIsMovable | ItemIsSelectable
@@ -192,6 +194,23 @@ namespace {
 						break;
 					default:
 					{
+						if (!m_drawing.isEmpty())
+						{
+								//The front view, its tag in a corner
+							painter->fillRect(r, Qt::white);
+							ComponentDrawings::paint(painter, m_drawing, r);
+							QFont font = painter->font();
+							font.setPointSizeF(qBound(3.0, r.width() / 6, 7.0));
+							font.setBold(true);
+							painter->setFont(font);
+							const QRectF label = painter->fontMetrics()
+								.boundingRect(m_tag).adjusted(-1, 0, 1, 0);
+							const QRectF corner(r.topLeft(), label.size());
+							painter->fillRect(corner, QColor(0x14, 0x24, 0x3A));
+							painter->setPen(Qt::white);
+							painter->drawText(corner, Qt::AlignCenter, m_tag);
+							break;
+						}
 						QPen pen(QColor(0x14, 0x24, 0x3A), 1.2);
 						if (!m_sized) pen.setStyle(Qt::DashLine);
 						painter->setPen(pen);
@@ -221,6 +240,7 @@ namespace {
 			PanelLayout::Item::Kind m_kind;
 			QString m_tag;
 			bool m_sized;
+			QString m_drawing;
 			QPointF m_press;
 	};
 
@@ -379,6 +399,7 @@ void PanelLayoutWindow::setUpUi()
 				     this, &PanelLayoutWindow::apply);
 	toolbar->addAction(QET::Icons::TableOfContent, tr("Generate pages"),
 			   this, &PanelLayoutWindow::generatePages);
+
 
 		//Left: the components of the schematic
 	auto *left = new QWidget(this);
@@ -678,7 +699,8 @@ void PanelLayoutWindow::rebuildScene()
 			known ? part->tag : QStringLiteral("?"),
 			item.kind != PanelLayout::Item::Kind::Component
 				|| (known && part->size.isValid()
-				    && !part->size.isEmpty()));
+				    && !part->size.isEmpty()),
+			known ? part->drawing : QString());
 		m_scene->addItem(graphic);
 		if (m_selected.contains(i)) graphic->setSelected(true);
 	}

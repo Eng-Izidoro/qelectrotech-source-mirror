@@ -47,6 +47,8 @@ class PanelComponents
 				///in mm; empty when its part data has no size
 			QSizeF size;
 			bool is_strip = false;
+				///the front view from the catalogue, empty if none
+			QString drawing;
 				///the symbols carrying its part data
 			QList<QPointer<Element>> elements;
 		};
