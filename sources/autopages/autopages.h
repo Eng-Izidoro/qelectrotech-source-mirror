@@ -19,6 +19,7 @@
 #define AUTOPAGES_H
 
 #include <QCoreApplication>
+#include <QRectF>
 #include <QString>
 
 class Diagram;
@@ -43,6 +44,9 @@ class AutoPages
 		static QString kindOf(const Diagram *diagram);
 		static bool hasAutoPages(QETProject *project);
 		static void generate(QETProject *project);
+		static Diagram *newPage(QETProject *project, int position,
+					const QString &title, const QString &kind);
+		static QRectF freeArea(Diagram *diagram);
 
 		static QString coverTemplateName();
 		static QString coverTemplateSvg(qreal width, qreal height);

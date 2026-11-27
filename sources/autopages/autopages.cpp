@@ -21,6 +21,7 @@
 #include "../TerminalStrip/GraphicsItem/terminalstripitem.h"
 #include "../TerminalStrip/terminalstrip.h"
 #include "../diagram.h"
+#include "../panellayout/panellayoutsheets.h"
 #include "../factory/elementpicturefactory.h"
 #include "../properties/elementdata.h"
 #include "../qetapp.h"
@@ -64,26 +65,15 @@ namespace {
 		diagram->border_and_titleblock.importTitleBlock(properties);
 	}
 
-		/// A new folio at @p position (-1: at the end), marked as @p kind
 	Diagram *newPage(QETProject *project, int position,
 			 const QString &title, const QString &kind)
 	{
-		Diagram *diagram = project->addNewDiagram(position, title);
-		if (diagram) mark(diagram, kind);
-		return diagram;
+		return AutoPages::newPage(project, position, title, kind);
 	}
 
-		/// The drawing area of @p diagram, less what its title block
-		/// covers when the title block sits over it
 	QRectF freeArea(Diagram *diagram)
 	{
-		const BorderTitleBlock &border = diagram->border_and_titleblock;
-		QRectF area = border.insideBorderRect();
-		const QRectF title_block = border.titleBlockRect();
-		if (title_block.top() < area.bottom()
-			&& title_block.bottom() > area.top())
-			area.setBottom(title_block.top());
-		return area;
+		return AutoPages::freeArea(diagram);
 	}
 
 		/**
@@ -352,6 +342,35 @@ namespace {
 }
 
 /**
+	@brief AutoPages::newPage
+	@return a new folio of @p project at @p position (-1: at the end),
+	titled @p title and marked as a @p kind automatic folio
+*/
+Diagram *AutoPages::newPage(QETProject *project, int position,
+			    const QString &title, const QString &kind)
+{
+	Diagram *diagram = project->addNewDiagram(position, title);
+	if (diagram) mark(diagram, kind);
+	return diagram;
+}
+
+/**
+	@brief AutoPages::freeArea
+	@return the drawing area of @p diagram, less what its title block
+	covers when the title block sits over it
+*/
+QRectF AutoPages::freeArea(Diagram *diagram)
+{
+	const BorderTitleBlock &border = diagram->border_and_titleblock;
+	QRectF area = border.insideBorderRect();
+	const QRectF title_block = border.titleBlockRect();
+	if (title_block.top() < area.bottom()
+		&& title_block.bottom() > area.top())
+		area.setBottom(title_block.top());
+	return area;
+}
+
+/**
 	@brief AutoPages::markerKey
 	@return the additional field of the title block that marks a folio
 	made by AutoPages, and holds its kind
@@ -388,7 +407,8 @@ bool AutoPages::hasAutoPages(QETProject *project)
 	@brief AutoPages::generate
 	Take the automatic folios of @p project away, and make them again from
 	the other folios: cover and index first, then the symbols, the list of
-	components and the terminal strips at the end. One undo step.
+	components, the terminal strips and the panel layouts at the end. One
+	undo step.
 */
 void AutoPages::generate(QETProject *project)
 {
@@ -435,6 +455,7 @@ void AutoPages::generate(QETProject *project)
 				.arg(ElementData::typeToString(ElementData::Simple),
 				     ElementData::typeToString(ElementData::Master)));
 	addTerminalStripPages(project);
+	PanelLayoutSheets::addPages(project);
 
 	stack->endMacro();
 }
