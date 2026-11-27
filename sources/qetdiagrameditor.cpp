@@ -86,6 +86,7 @@
 #include "qetgraphicsitem/independenttextitem.h"
 #include "QPropertyUndoCommand/qpropertyundocommand.h"
 #include "autopages/autopages.h"
+#include "panellayout/panellayoutwindow.h"
 #include "ui/componentpalettewidget.h"
 #include "ui/projectdatadialog.h"
 #include "undocommand/movediagramcommand.h"
@@ -1474,6 +1475,19 @@ void QETDiagramEditor::setUpActions()
 	connect(m_generate_auto_pages, &QAction::triggered,
 		this, &QETDiagramEditor::generateAutoPages);
 
+		//Izidoro fork: where the parts sit in the panels
+	m_panel_layout = new QAction(QET::Icons::DiagramBg,
+				     tr("Panel layout..."), this);
+	ShortcutManager::instance().registerAction(
+		m_panel_layout, "diagrameditor.panel_layout",
+		tr("Diagram editors"), QKeySequence());
+	m_panel_layout->setStatusTip(tr(
+		"Places the components of the schematic on the mounting plate"
+		" and door of each panel", "status bar tip"));
+	connect(m_panel_layout, &QAction::triggered, this, [this]() {
+		PanelLayoutWindow::open(currentProject(), this);
+	});
+
 		//Add a nomenclature item
 	m_add_nomenclature = new QAction(QET::Icons::TableOfContent, tr("Add a nomenclature"), this);
 	ShortcutManager::instance().registerAction(m_add_nomenclature, "diagrameditor.add_nomenclature", tr("Diagram editors"), QKeySequence());
@@ -2365,6 +2379,7 @@ void QETDiagramEditor::setUpRibbon()
 		{"diagrameditor.edit_diagram_properties", tr("Page")},
 		{"diagrameditor.project_data", tr("Project data")},
 		{"diagrameditor.generate_auto_pages", tr("Automatic pages")},
+		{"diagrameditor.panel_layout", tr("Panel layout")},
 		{"diagrameditor.project_edit_properties", tr("Properties")},
 		{"diagrameditor.check_project", tr("Check")},
 		{"diagrameditor.export_wiring_list", tr("Wiring list")},
@@ -2434,6 +2449,7 @@ void QETDiagramEditor::setUpRibbon()
 			 sep,
 			 "diagrameditor.project_data",
 			 "diagrameditor.generate_auto_pages",
+			 "diagrameditor.panel_layout",
 			 "diagrameditor.project_edit_properties",
 			 sep,
 			 "diagrameditor.check_project",
@@ -2741,6 +2757,7 @@ void QETDiagramEditor::setUpMenu()
 	// menu Projet
 	menu_project -> addAction(m_project_data);
 	menu_project -> addAction(m_generate_auto_pages);
+	menu_project -> addAction(m_panel_layout);
 	menu_project -> addAction(m_project_edit_properties);
 	menu_project -> addAction(m_project_history);
 	menu_project -> addAction(m_auto_conductor);
@@ -4404,6 +4421,7 @@ void QETDiagramEditor::slot_updateActions()
 	m_project_edit_properties     -> setEnabled(opened_project);
 	m_project_data                -> setEnabled(opened_project);
 	m_generate_auto_pages         -> setEnabled(editable_project);
+	m_panel_layout                -> setEnabled(editable_project);
 	m_find_duplicate_labels->setEnabled(opened_project);
 	m_check_potentials->setEnabled(opened_project);
 	m_check_project->setEnabled(opened_project);
