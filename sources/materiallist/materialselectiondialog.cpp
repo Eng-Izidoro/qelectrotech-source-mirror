@@ -17,6 +17,8 @@
 */
 #include "materialselectiondialog.h"
 
+#include "../panellayout/componentdrawings.h"
+
 #include "ui_materialselectiondialog.h"
 
 #include <qetapp.h>
@@ -31,16 +33,22 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
+#include <QGroupBox>
+#include <QHBoxLayout>
 #include <QHeaderView>
+#include <QImage>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMap>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPixmap>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QSet>
+#include <QSettings>
 #include <QShortcut>
 #include <QStyledItemDelegate>
 #include <QTableWidgetItem>
@@ -154,15 +162,25 @@ QString articleNumberLabel(const MaterialRecord &record)
 	@param parent parent widget
 */
 MaterialSelectionDialog::MaterialSelectionDialog(const QString &path,
-												 QWidget *parent) :
+												 QWidget *parent,
+												 bool catalogue) :
 	QDialog(parent),
 	ui(new Ui::MaterialSelectionDialog),
+	m_catalogue(catalogue),
 	m_path(path)
 {
 	ui->setupUi(this);
 
 	ui->m_button_box->button(QDialogButtonBox::Ok)->setText(tr("Apply"));
 	ui->m_button_box->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
+	if (m_catalogue)
+	{
+			//Opened to keep the list, not to choose a part for a symbol
+		setWindowTitle(tr("Component catalogue"));
+		ui->m_button_box->button(QDialogButtonBox::Ok)->hide();
+		ui->m_button_box->button(QDialogButtonBox::Cancel)->setText(tr("Close"));
+	}
+	setUpDrawingPanel();
 
 	ui->m_tree_widget->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 	ui->m_tree_widget->header()->setStretchLastSection(true);
@@ -270,6 +288,7 @@ void MaterialSelectionDialog::reload()
 	rebuildTree();
 	populateDetails(selectedRecord());
 	updateButtons();
+	refreshDrawing();
 }
 
 void MaterialSelectionDialog::populateFilterFields(const QString &keep_field)
@@ -398,6 +417,10 @@ void MaterialSelectionDialog::rebuildTree()
 			item->setText(1, rec.value(QStringLiteral("description")));
 			item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 			item->setData(0, SourceRowRole, row);
+			if (ComponentDrawings::hasDrawing(
+					rec.value(QStringLiteral("manufacturer")),
+					rec.value(QStringLiteral("manufacturer_reference"))))
+				item->setIcon(0, QET::Icons::DiagramBg);
 		}
 	}
 	else
@@ -427,6 +450,10 @@ void MaterialSelectionDialog::rebuildTree()
 				child->setText(1, rec.value(QStringLiteral("description")));
 				child->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 				child->setData(0, SourceRowRole, row);
+				if (ComponentDrawings::hasDrawing(
+						rec.value(QStringLiteral("manufacturer")),
+						rec.value(QStringLiteral("manufacturer_reference"))))
+					child->setIcon(0, QET::Icons::DiagramBg);
 			}
 		}
 
@@ -579,7 +606,7 @@ void MaterialSelectionDialog::setEditMode(EditMode mode)
 		ui->m_details_table->setFocus();
 	}
 
-	updateButtons();
+	updateButtons();	refreshDrawing();
 }
 
 MaterialRecord MaterialSelectionDialog::detailsRecord() const
@@ -650,6 +677,7 @@ void MaterialSelectionDialog::treeSelectionChanged()
 	}
 	populateDetails(selectedRecord());
 	updateButtons();
+	refreshDrawing();
 }
 
 void MaterialSelectionDialog::treeItemDoubleClicked(QTreeWidgetItem *item, int)
@@ -1244,4 +1272,190 @@ void MaterialSelectionDialog::showTreeContextMenu(const QPoint &pos)
 	export_action->setEnabled(!m_data.records.isEmpty());
 
 	menu.exec(ui->m_tree_widget->viewport()->mapToGlobal(pos));
+}
+
+/**
+	@brief MaterialSelectionDialog::setUpDrawingPanel
+	Under the fields of the selected part, its front drawing and the
+	buttons to import it from a DXF file or remove it
+*/
+void MaterialSelectionDialog::setUpDrawingPanel()
+{
+	auto *box = new QGroupBox(tr("Front drawing"), ui->m_right_widget);
+	auto *layout = new QVBoxLayout(box);
+	m_drawing_preview = new QLabel(box);
+	m_drawing_preview->setAlignment(Qt::AlignCenter);
+	m_drawing_preview->setMinimumHeight(170);
+	m_drawing_preview->setStyleSheet(QStringLiteral(
+		"background: white; border: 1px solid #D5DCE6;"));
+	m_drawing_info = new QLabel(box);
+	m_drawing_info->setWordWrap(true);
+	m_import_dxf_btn = new QPushButton(QET::Icons::DocumentImport,
+					   tr("Import DXF..."), box);
+	m_import_dxf_btn->setToolTip(tr(
+		"The front view of the part, in mm, as the manufacturer gives"
+		" it. Its width and height fill the fields."));
+	m_remove_drawing_btn = new QPushButton(QET::Icons::EditDelete,
+					       tr("Remove drawing"), box);
+	auto *buttons = new QHBoxLayout();
+	buttons->addWidget(m_import_dxf_btn);
+	buttons->addWidget(m_remove_drawing_btn);
+	buttons->addStretch();
+	layout->addWidget(m_drawing_preview);
+	layout->addWidget(m_drawing_info);
+	layout->addLayout(buttons);
+	ui->m_right_layout->addWidget(box);
+
+	connect(m_import_dxf_btn, &QPushButton::clicked,
+		this, &MaterialSelectionDialog::importDrawing);
+	connect(m_remove_drawing_btn, &QPushButton::clicked,
+		this, &MaterialSelectionDialog::removeDrawing);
+		//A reference typed while editing tells which drawing it is
+	connect(ui->m_details_table, &QTableWidget::itemChanged, this,
+		[this](QTableWidgetItem *item) {
+			if (m_edit_mode != EditMode::View && item && item->column() == 1)
+				refreshDrawing();
+		});
+}
+
+/**
+	@brief MaterialSelectionDialog::currentRecord
+	@return the part shown: the one being edited, else the selected one
+*/
+MaterialRecord MaterialSelectionDialog::currentRecord() const
+{
+	return m_edit_mode == EditMode::View ? selectedRecord()
+					     : detailsRecord();
+}
+
+void MaterialSelectionDialog::refreshDrawing()
+{
+	if (!m_drawing_preview) return;
+	const MaterialRecord record = currentRecord();
+	const QString manufacturer = record.value(QStringLiteral("manufacturer"));
+	const QString reference =
+		record.value(QStringLiteral("manufacturer_reference"));
+	const QString svg = ComponentDrawings::drawingPath(manufacturer, reference);
+	const bool has = !svg.isEmpty() && QFileInfo::exists(svg);
+
+	m_import_dxf_btn->setEnabled(!reference.isEmpty()
+		&& (m_edit_mode != EditMode::View || selectedSourceRow() >= 0));
+	m_remove_drawing_btn->setEnabled(has && m_edit_mode == EditMode::View);
+
+	if (!has)
+	{
+		m_drawing_preview->setPixmap(QPixmap());
+		m_drawing_preview->setText(reference.isEmpty()
+			? tr("Fill in the manufacturer reference to import its"
+			     " drawing.")
+			: tr("No drawing yet."));
+		m_drawing_info->clear();
+		return;
+	}
+	const QSizeF mm = ComponentDrawings::size(svg);
+	const QSize room = m_drawing_preview->size() - QSize(16, 16);
+	QSizeF shown = mm;
+	shown.scale(QSizeF(room.expandedTo(QSize(60, 60))), Qt::KeepAspectRatio);
+	const qreal ratio = devicePixelRatioF();
+	QImage picture = ComponentDrawings::image(
+		svg, mm, shown.width() * ratio / qMax(1.0, mm.width()));
+	picture.setDevicePixelRatio(ratio);
+	m_drawing_preview->setPixmap(QPixmap::fromImage(picture));
+	m_drawing_info->setText(tr("%1 × %2 mm")
+		.arg(QLocale().toString(mm.width(), 'f', 1),
+		     QLocale().toString(mm.height(), 'f', 1)));
+}
+
+/**
+	@brief MaterialSelectionDialog::importDrawing
+	Ask for a DXF file and keep it as the drawing of the part shown; its
+	width and height go to the fields of the part.
+*/
+void MaterialSelectionDialog::importDrawing()
+{
+	const MaterialRecord record = currentRecord();
+	const QString manufacturer = record.value(QStringLiteral("manufacturer"));
+	const QString reference =
+		record.value(QStringLiteral("manufacturer_reference"));
+	if (reference.isEmpty()) return;
+
+	QSettings settings;
+	const QString key = QStringLiteral("izidoro/last-dxf-folder");
+	const QString file = QFileDialog::getOpenFileName(
+		this, tr("Front drawing of %1").arg(reference),
+		settings.value(key).toString(),
+		tr("DXF drawings (*.dxf *.DXF)"));
+	if (file.isEmpty()) return;
+	settings.setValue(key, QFileInfo(file).absolutePath());
+
+	QApplication::setOverrideCursor(Qt::WaitCursor);
+	QSizeF size;
+	QString error;
+	const bool ok = ComponentDrawings::importDxf(file, manufacturer,
+						     reference, &size, &error);
+	QApplication::restoreOverrideCursor();
+	if (!ok)
+	{
+		QET::QetMessageBox::warning(this, tr("Import DXF"), error);
+		return;
+	}
+	if (size.width() > 600 || size.height() > 600)
+		QET::QetMessageBox::information(
+			this, tr("Import DXF"),
+			tr("The drawing is %1 × %2 mm. If the part is smaller, the"
+			   " DXF may hold more than its front view, or be in"
+			   " another unit than mm.")
+			.arg(qRound(size.width())).arg(qRound(size.height())));
+
+	auto number = [](qreal value) {
+		return QString::number(qRound(value * 10) / 10.0);
+	};
+	if (m_edit_mode != EditMode::View)
+	{
+			//Into the fields being edited, saved with them
+		for (int i = 0; i < ui->m_details_table->rowCount(); ++i)
+		{
+			const QString column = ui->m_details_table->item(i, 0)
+				->data(ColumnKeyRole).toString();
+			if (column == QLatin1String("width"))
+				ui->m_details_table->item(i, 1)->setText(number(size.width()));
+			else if (column == QLatin1String("height"))
+				ui->m_details_table->item(i, 1)->setText(number(size.height()));
+		}
+		refreshDrawing();
+		return;
+	}
+
+	const int row = selectedSourceRow();
+	if (row < 0) return;
+	const MaterialRecord original = m_data.records.at(row);
+	MaterialRecord updated = original;
+	updated.setValue(QStringLiteral("width"), number(size.width()));
+	updated.setValue(QStringLiteral("height"), number(size.height()));
+	if (!MaterialList::updateRecord(m_path, row, original, updated, &error))
+		QET::QetMessageBox::critical(this, tr("Cannot write"),
+					     tr("Cannot write to the file:\n%1\n%2")
+					     .arg(m_path, error));
+	reload();
+	selectRecord(updated);
+	populateDetails(selectedRecord());
+	refreshDrawing();
+}
+
+void MaterialSelectionDialog::removeDrawing()
+{
+	const MaterialRecord record = selectedRecord();
+	const QString reference =
+		record.value(QStringLiteral("manufacturer_reference"));
+	if (QET::QetMessageBox::question(
+		    this, tr("Remove drawing"),
+		    tr("Remove the front drawing of %1?").arg(reference),
+		    QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+		!= QMessageBox::Yes)
+		return;
+	ComponentDrawings::removeDrawing(
+		record.value(QStringLiteral("manufacturer")), reference);
+	reload();
+	selectRecord(record);
+	refreshDrawing();
 }

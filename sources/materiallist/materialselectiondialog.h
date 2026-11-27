@@ -22,6 +22,8 @@
 
 #include <QDialog>
 
+class QLabel;
+class QPushButton;
 class QTreeWidgetItem;
 
 namespace Ui {
@@ -43,7 +45,8 @@ class MaterialSelectionDialog : public QDialog
 
 	public:
 		explicit MaterialSelectionDialog(const QString &path,
-										 QWidget *parent = nullptr);
+										 QWidget *parent = nullptr,
+										 bool catalogue = false);
 		~MaterialSelectionDialog() override;
 
 		MaterialRecord selectedRecord() const;
@@ -92,7 +95,19 @@ class MaterialSelectionDialog : public QDialog
 		void showDetailsContextMenu(const QPoint &pos);
 		void showTreeContextMenu(const QPoint &pos);
 
+			//Izidoro fork: the front drawing of the selected part
+		void setUpDrawingPanel();
+		MaterialRecord currentRecord() const;
+		void refreshDrawing();
+		void importDrawing();
+		void removeDrawing();
+
 		Ui::MaterialSelectionDialog *ui;
+		bool m_catalogue = false;	///< opened on its own, not to choose
+		QLabel *m_drawing_preview = nullptr;
+		QLabel *m_drawing_info = nullptr;
+		QPushButton *m_import_dxf_btn = nullptr;
+		QPushButton *m_remove_drawing_btn = nullptr;
 		QString m_path;
 		MaterialListData m_data;
 		EditMode m_edit_mode = EditMode::View;

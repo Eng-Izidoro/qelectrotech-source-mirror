@@ -1043,6 +1043,8 @@ set(QET_SRC_FILES
   ${QET_DIR}/sources/ui/componentpalettewidget.h
   ${QET_DIR}/sources/autopages/autopages.cpp
   ${QET_DIR}/sources/autopages/autopages.h
+  ${QET_DIR}/sources/panellayout/componentdrawings.cpp
+  ${QET_DIR}/sources/panellayout/componentdrawings.h
   ${QET_DIR}/sources/panellayout/dxfreader.cpp
   ${QET_DIR}/sources/panellayout/dxfreader.h
   ${QET_DIR}/sources/panellayout/panelcomponents.cpp
