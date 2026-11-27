@@ -85,6 +85,7 @@
 #include "ui/textdestinationdialog.h"
 #include "qetgraphicsitem/independenttextitem.h"
 #include "QPropertyUndoCommand/qpropertyundocommand.h"
+#include "autopages/autopages.h"
 #include "ui/componentpalettewidget.h"
 #include "ui/projectdatadialog.h"
 #include "undocommand/movediagramcommand.h"
@@ -1461,6 +1462,18 @@ void QETDiagramEditor::setUpActions()
 		bom.exec();
 	});
 
+		//Izidoro fork: cover, index, symbols, parts list, terminal strips
+	m_generate_auto_pages = new QAction(QET::Icons::TableOfContent,
+					    tr("Generate automatic pages"), this);
+	ShortcutManager::instance().registerAction(
+		m_generate_auto_pages, "diagrameditor.generate_auto_pages",
+		tr("Diagram editors"), QKeySequence());
+	m_generate_auto_pages->setStatusTip(tr(
+		"Makes the cover, index, symbols, parts list and terminal strip"
+		" pages of the project", "status bar tip"));
+	connect(m_generate_auto_pages, &QAction::triggered,
+		this, &QETDiagramEditor::generateAutoPages);
+
 		//Add a nomenclature item
 	m_add_nomenclature = new QAction(QET::Icons::TableOfContent, tr("Add a nomenclature"), this);
 	ShortcutManager::instance().registerAction(m_add_nomenclature, "diagrameditor.add_nomenclature", tr("Diagram editors"), QKeySequence());
@@ -2271,6 +2284,29 @@ void QETDiagramEditor::setUpToolBar()
 }
 
 /**
+	@brief QETDiagramEditor::generateAutoPages
+	Make the automatic pages of the current project again, once the user
+	agrees to lose the changes made on the ones it already has.
+*/
+void QETDiagramEditor::generateAutoPages()
+{
+	QETProject *project = currentProject();
+	if (!project || project->isReadOnly()) return;
+	if (AutoPages::hasAutoPages(project)
+		&& QET::QetMessageBox::question(
+			   this, tr("Generate automatic pages"),
+			   tr("The automatic pages of this project will be made"
+			      " again from its other pages, and what was changed on"
+			      " them is lost. Edit > Undo brings them back."),
+			   QMessageBox::Yes | QMessageBox::Cancel,
+			   QMessageBox::Yes) != QMessageBox::Yes)
+		return;
+	QApplication::setOverrideCursor(Qt::WaitCursor);
+	AutoPages::generate(project);
+	QApplication::restoreOverrideCursor();
+}
+
+/**
 	@brief QETDiagramEditor::setUpRibbon
 	One bar of tabs by task (Home, Draw, Wires, Pages and project, View),
 	each a row of the existing commands with their name under their icon.
@@ -2328,6 +2364,7 @@ void QETDiagramEditor::setUpRibbon()
 		 tr("Delete page")},
 		{"diagrameditor.edit_diagram_properties", tr("Page")},
 		{"diagrameditor.project_data", tr("Project data")},
+		{"diagrameditor.generate_auto_pages", tr("Automatic pages")},
 		{"diagrameditor.project_edit_properties", tr("Properties")},
 		{"diagrameditor.check_project", tr("Check")},
 		{"diagrameditor.export_wiring_list", tr("Wiring list")},
@@ -2396,6 +2433,7 @@ void QETDiagramEditor::setUpRibbon()
 			 "diagrameditor.edit_diagram_properties",
 			 sep,
 			 "diagrameditor.project_data",
+			 "diagrameditor.generate_auto_pages",
 			 "diagrameditor.project_edit_properties",
 			 sep,
 			 "diagrameditor.check_project",
@@ -2702,6 +2740,7 @@ void QETDiagramEditor::setUpMenu()
 
 	// menu Projet
 	menu_project -> addAction(m_project_data);
+	menu_project -> addAction(m_generate_auto_pages);
 	menu_project -> addAction(m_project_edit_properties);
 	menu_project -> addAction(m_project_history);
 	menu_project -> addAction(m_auto_conductor);
@@ -4364,6 +4403,7 @@ void QETDiagramEditor::slot_updateActions()
 		//Project menu
 	m_project_edit_properties     -> setEnabled(opened_project);
 	m_project_data                -> setEnabled(opened_project);
+	m_generate_auto_pages         -> setEnabled(editable_project);
 	m_find_duplicate_labels->setEnabled(opened_project);
 	m_check_potentials->setEnabled(opened_project);
 	m_check_project->setEnabled(opened_project);
